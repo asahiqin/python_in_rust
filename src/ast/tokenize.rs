@@ -68,21 +68,23 @@ pub fn tokenize(code: String) -> ASTNode {
 }
 
 #[derive(Debug)]
-struct Token {
+pub struct Token {
     token_type: TokenType,
     lineno: usize,
     col_offset: usize,
-    literal: None,
-    lexeme: &'static str,
+    literal: usize,
+    lexeme: String,
 }
-struct Scanner {
+#[derive(Debug)]
+pub struct Scanner {
     source: &'static str,
     lineno: usize,
     col_offset: usize,
     end_lineno: usize,
     end_col_offset: usize,
-    current_char: &'static str,
-    token: Vec<Token>,
+    current_char: String,
+    pub(crate) token: Vec<Token>,
+    lexeme: String
 }
 pub fn build_scanner(source: &'static str) -> Scanner {
     let end_lineno = source.lines().count();
@@ -93,25 +95,29 @@ pub fn build_scanner(source: &'static str) -> Scanner {
         col_offset: 0,
         end_lineno,
         end_col_offset,
-        current_char: "",
+        current_char: "".parse().unwrap(),
         token: vec![],
+        lexeme: "".to_string()
     }
 }
 
 impl Scanner {
-    fn scan(&mut self) {
+    pub fn scan(&mut self) {
         let lines: Vec<&str> = self.source.lines().collect();
         while (!self.is_at_end()) {
             'line: for (lineno, line) in lines.iter().enumerate() {
                 self.lineno = lineno;
                 self.col_offset = 0;
                 for (col_offset, char) in line.chars().enumerate() {
-                    if self.col_offset + 1 != col_offset {
+                    if self.col_offset + 1 != col_offset && self.col_offset != 0 {
                         continue;
                     }
                     self.col_offset = col_offset;
-                    self.current_char = char.to_string().as_str();
-                    match self.current_char {
+                    self.lexeme = char.to_string();
+                    let check_equal = self.check_equal(line);
+                    let tmp_char = char;
+                    self.current_char = tmp_char.to_string();
+                    match self.current_char.as_str() {
                         "(" => self.add_token(LeftParen),
                         ")" => self.add_token(RightParen),
                         "{" => self.add_token(LeftParen),
@@ -122,32 +128,29 @@ impl Scanner {
                         "*" => self.add_token(STAR),
                         ";" => self.add_token(SEMICOLON),
                         "." => self.add_token(DOT),
-                        "<" => self.add_token(if self.check_equal(line) {
+                        "<" => self.add_token(if check_equal {
                             LessEqual
                         } else {
                             LESS
                         }),
-                        "!" => self.add_token(if self.check_equal(line) {
+                        "!" => self.add_token(if check_equal {
                             BangEqual
                         } else {
                             BANG
                         }),
-                        "=" => self.add_token(if self.check_equal(line) {
+                        "=" => self.add_token(if check_equal {
                             EqualEqual
                         } else {
                             EqualEqual
                         }),
-                        ">" => self.add_token(if self.check_equal(line) {
+                        ">" => self.add_token(if check_equal {
                             GreaterEqual
                         } else {
                             GREATER
                         }),
-                        "/" => {
-                            if self.check_next(line, "/") {
-                                continue 'line;
-                            } else {
-                                self.add_token(SLASH)
-                            }
+                        "/" => self.add_token(SLASH),
+                        "#" => {
+                            self.col_offset = line.len()-1;
                         }
                         " " => self.add_token(SPACE),
                         "\t" => self.add_token(TAB),
@@ -160,9 +163,9 @@ impl Scanner {
         self.token.push(Token {
             token_type: TokenType::EOF,
             lineno: self.end_lineno,
-            col_offset: self.col_offset + 1,
-            literal: None,
-            lexeme: self.current_char,
+            col_offset: self.col_offset + 2,
+            literal: 0,
+            lexeme: "".to_string(),
         })
     }
     fn check_equal(&mut self, line: &str) -> bool {
@@ -170,9 +173,11 @@ impl Scanner {
     }
     fn check_next(&mut self, line: &str, character: &str) -> bool {
         let chars: Vec<char> = line.chars().collect();
-        if let next_chars = chars[&self.col_offset + 1] {
+        if &self.col_offset+1 < chars.len() {
+            let next_chars = chars[&self.col_offset + 1];
+            println!("{} {}", next_chars,&self.col_offset);
             if next_chars.to_string().as_str() == character {
-                self.current_char = format!("{}{}", self.current_char, character).as_str();
+                self.lexeme = format!("{}{}", self.lexeme, character);
                 self.col_offset += 1;
                 return true;
             }
@@ -184,15 +189,15 @@ impl Scanner {
             token_type,
             lineno: self.lineno,
             col_offset: self.col_offset,
-            literal: None,
-            lexeme,
+            literal: 0,
+            lexeme: self.lexeme.clone(),
         })
     }
     fn is_at_end(&self) -> bool {
-        return self.lineno == self.end_lineno && self.col_offset == self.end_col_offset;
+        return self.lineno+1 == self.end_lineno && self.col_offset+1 == self.end_col_offset;
     }
 }
 
 pub fn throw_error(line: usize, col_offset: usize, message: &str) {
-    panic!("[{}:{}]Error:{}", line, col_offset, message)
+    panic!("[{}:{}]Error:{}", line+1, col_offset+1, message)
 }
