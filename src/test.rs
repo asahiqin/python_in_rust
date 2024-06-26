@@ -1,4 +1,4 @@
-use crate::ast::tokenize::{build_scanner, Scanner, tokenize};
+use crate::ast::tokenize::{build_scanner, tokenize, Scanner};
 
 pub fn test() {
     println!("{:?}", tokenize("".to_string()));

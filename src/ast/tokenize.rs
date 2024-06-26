@@ -1,7 +1,7 @@
 use crate::ast::ast_struct::ASTNode;
 use crate::ast::tokenize::TokenType::{
-    BangEqual, EqualEqual, GreaterEqual, LeftParen, LessEqual, RightBrace, RightParen, BANG, COMMA,
-    DOT, GREATER, LESS, MINUS, PLUS, SEMICOLON, SLASH, SPACE, STAR, TAB,
+    BangEqual, EqualEqual, GreaterEqual, LeftParen, LessEqual, RightBrace, RightParen, BANG, COLON,
+    COMMA, DOT, EQUAL, GREATER, LESS, MINUS, PLUS, SEMICOLON, SLASH, SPACE, STAR, TAB,
 };
 
 #[derive(Debug)]
@@ -18,6 +18,7 @@ pub enum TokenType {
     SEMICOLON,
     SLASH,
     STAR,
+    COLON,
 
     BANG,
     BangEqual,
@@ -84,7 +85,20 @@ pub struct Scanner {
     end_col_offset: usize,
     current_char: String,
     pub(crate) token: Vec<Token>,
-    lexeme: String
+    lexeme: String,
+    checker: Checker,
+}
+#[derive(Debug)]
+enum CheckMethod {
+    InLine,
+    Next,
+    All,
+}
+#[derive(Debug)]
+pub struct Checker {
+    current_check_char: String,
+    check_method: CheckMethod,
+    is_checked: bool,
 }
 pub fn build_scanner(source: &'static str) -> Scanner {
     let end_lineno = source.lines().count();
@@ -97,69 +111,74 @@ pub fn build_scanner(source: &'static str) -> Scanner {
         end_col_offset,
         current_char: "".parse().unwrap(),
         token: vec![],
-        lexeme: "".to_string()
+        lexeme: "".to_string(),
+        checker: Checker {
+            current_check_char: "".to_string(),
+            check_method: CheckMethod::InLine,
+            is_checked: true,
+        },
     }
 }
 
 impl Scanner {
     pub fn scan(&mut self) {
         let lines: Vec<&str> = self.source.lines().collect();
-        while (!self.is_at_end()) {
-            'line: for (lineno, line) in lines.iter().enumerate() {
-                self.lineno = lineno;
-                self.col_offset = 0;
-                for (col_offset, char) in line.chars().enumerate() {
-                    if self.col_offset + 1 != col_offset && self.col_offset != 0 {
-                        continue;
+        'line: for (lineno, line) in lines.iter().enumerate() {
+            self.lineno = lineno;
+            if !self.checker.is_checked {
+                match self.checker.check_method {
+                    CheckMethod::InLine => {
+                        throw_error(lineno, self.col_offset + 1, "Unexpected token")
                     }
-                    self.col_offset = col_offset;
-                    self.lexeme = char.to_string();
-                    let check_equal = self.check_equal(line);
-                    let tmp_char = char;
-                    self.current_char = tmp_char.to_string();
-                    match self.current_char.as_str() {
-                        "(" => self.add_token(LeftParen),
-                        ")" => self.add_token(RightParen),
-                        "{" => self.add_token(LeftParen),
-                        "}" => self.add_token(RightBrace),
-                        "," => self.add_token(COMMA),
-                        "+" => self.add_token(PLUS),
-                        "-" => self.add_token(MINUS),
-                        "*" => self.add_token(STAR),
-                        ";" => self.add_token(SEMICOLON),
-                        "." => self.add_token(DOT),
-                        "<" => self.add_token(if check_equal {
-                            LessEqual
-                        } else {
-                            LESS
-                        }),
-                        "!" => self.add_token(if check_equal {
-                            BangEqual
-                        } else {
-                            BANG
-                        }),
-                        "=" => self.add_token(if check_equal {
-                            EqualEqual
-                        } else {
-                            EqualEqual
-                        }),
-                        ">" => self.add_token(if check_equal {
-                            GreaterEqual
-                        } else {
-                            GREATER
-                        }),
-                        "/" => self.add_token(SLASH),
-                        "#" => {
-                            self.col_offset = line.len()-1;
-                        }
-                        " " => self.add_token(SPACE),
-                        "\t" => self.add_token(TAB),
-                        "\r" => continue,
-                        _ => throw_error(self.lineno, self.col_offset, "Unexpected Character"),
-                    }
+                    CheckMethod::All => self.lexeme += "\n",
+                    _ => {}
                 }
             }
+            self.col_offset = 0;
+            for (col_offset, char) in line.chars().enumerate() {
+                let string_char = char.to_string();
+                if !self.checker.is_checked {
+                    println!("{}", self.lexeme);
+                    if self.checker.current_check_char == string_char {
+                        self.lexeme += string_char.as_str();
+                        self.recognize_token(self.lexeme.clone());
+                        self.checker.is_checked = true;
+                        continue;
+                    } else {
+                        match self.checker.check_method {
+                            CheckMethod::InLine => {
+                                self.lexeme += string_char.as_str();
+                                continue;
+                            }
+                            CheckMethod::Next => {
+                                self.checker.is_checked = true;
+                                self.recognize_token(self.lexeme.clone());
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+                self.lexeme = string_char;
+                self.col_offset = col_offset;
+                self.current_char = char.to_string();
+                match self.current_char.as_str() {
+                    "<" => {
+                        self.build_checker(String::from("="), CheckMethod::Next);
+                        continue;
+                    }
+                    "=" => {
+                        self.build_checker(String::from("="), CheckMethod::Next);
+                        continue;
+                    }
+                    "#" => continue 'line,
+                    "\r" => continue,
+                    _ => {}
+                }
+                println!("{}", self.lexeme);
+                self.recognize_token(self.lexeme.clone())
+            }
         }
+
         self.token.push(Token {
             token_type: TokenType::EOF,
             lineno: self.end_lineno,
@@ -168,22 +187,40 @@ impl Scanner {
             lexeme: "".to_string(),
         })
     }
-    fn check_equal(&mut self, line: &str) -> bool {
-        return self.check_next(line, "=");
+    fn recognize_token(&mut self, lexeme: String) {
+        match lexeme.as_str() {
+            "(" => self.add_token(LeftParen),
+            ")" => self.add_token(RightParen),
+            "{" => self.add_token(LeftParen),
+            "}" => self.add_token(RightBrace),
+            "," => self.add_token(COMMA),
+            "+" => self.add_token(PLUS),
+            "-" => self.add_token(MINUS),
+            "*" => self.add_token(STAR),
+            ";" => self.add_token(SEMICOLON),
+            "." => self.add_token(DOT),
+            ":" => self.add_token(COLON),
+            "<" => self.add_token(LESS),
+            "<=" => self.add_token(LessEqual),
+            "!" => self.add_token(BANG),
+
+            "=" => self.add_token(EQUAL),
+            "==" => self.add_token(EqualEqual),
+            ">" => self.add_token(GREATER),
+            "/" => self.add_token(SLASH),
+            " " => self.add_token(SPACE),
+            "\t" => self.add_token(TAB),
+            _ => throw_error(self.lineno, self.col_offset, "Unexpected Character"),
+        }
     }
-    fn check_next(&mut self, line: &str, character: &str) -> bool {
-        let chars: Vec<char> = line.chars().collect();
-        if &self.col_offset+1 < chars.len() {
-            let next_chars = chars[&self.col_offset + 1];
-            println!("{} {}", next_chars,&self.col_offset);
-            if next_chars.to_string().as_str() == character {
-                self.lexeme = format!("{}{}", self.lexeme, character);
-                self.col_offset += 1;
-                return true;
-            }
-        };
-        false
+    fn build_checker(&mut self, check_str: String, check_method: CheckMethod) {
+        self.checker = Checker {
+            current_check_char: check_str,
+            check_method,
+            is_checked: false,
+        }
     }
+
     fn add_token(&mut self, token_type: TokenType) {
         self.token.push(Token {
             token_type,
@@ -193,11 +230,8 @@ impl Scanner {
             lexeme: self.lexeme.clone(),
         })
     }
-    fn is_at_end(&self) -> bool {
-        return self.lineno+1 == self.end_lineno && self.col_offset+1 == self.end_col_offset;
-    }
-}
 
+}
 pub fn throw_error(line: usize, col_offset: usize, message: &str) {
-    panic!("[{}:{}]Error:{}", line+1, col_offset+1, message)
+    println!("[{}:{}]Error:{}", line + 1, col_offset + 1, message)
 }
