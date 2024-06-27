@@ -1,5 +1,10 @@
 use crate::ast::ast_struct::ASTNode;
-use crate::ast::tokenize::TokenType::{BangEqual, EqualEqual, GreaterEqual, LeftParen, LessEqual, RightBrace, RightParen, BANG, COLON, Comma, Dot, EQUAL, GREATER, LESS, Minus, Plus, Semicolon, Slash, SPACE, Star, TAB, ExactDivision, Mod};
+use crate::ast::tokenize::TokenType::{
+    BangEqual, Comma, Dot, EqualEqual, ExactDivision, GreaterEqual, LeftParen, LessEqual, Minus,
+    Mod, Plus, RightBrace, RightParen, Semicolon, Slash, Star, BANG, COLON, EQUAL, GREATER, LESS,
+    SPACE, STRING, TAB,
+};
+use crate::strip_quotes;
 
 #[derive(Debug)]
 pub enum TokenType {
@@ -49,8 +54,6 @@ pub enum TokenType {
     IN,
     LAMBDA,
 
-
-
     SPACE,
     TAB,
     EOF,
@@ -66,13 +69,20 @@ pub fn tokenize(code: String) -> ASTNode {
         end_col_offset: 0,
     }
 }
-
+#[derive(Debug, Default)]
+enum Literal {
+    String(String),
+    Float(f64),
+    Int(isize),
+    #[default]
+    None,
+}
 #[derive(Debug)]
 pub struct Token {
     token_type: TokenType,
     lineno: usize,
     col_offset: usize,
-    literal: usize,
+    literal: Literal,
     lexeme: String,
 }
 #[derive(Debug)]
@@ -94,10 +104,18 @@ enum CheckMethod {
     All,
 }
 #[derive(Debug)]
+enum CheckFor {
+    String,
+    Number,
+    Normal,
+}
+#[derive(Debug)]
 pub struct Checker {
+    // Alright, maybe I should name it Matcher
     current_check_char: String,
     check_method: CheckMethod,
     is_checked: bool,
+    check_for: CheckFor,
 }
 pub fn build_scanner(source: &'static str) -> Scanner {
     let end_lineno = source.lines().count();
@@ -115,6 +133,7 @@ pub fn build_scanner(source: &'static str) -> Scanner {
             current_check_char: "".to_string(),
             check_method: CheckMethod::InLine,
             is_checked: true,
+            check_for: CheckFor::Normal,
         },
     }
 }
@@ -136,23 +155,70 @@ impl Scanner {
             self.col_offset = 0;
             for (col_offset, char) in line.chars().enumerate() {
                 let string_char = char.to_string();
+                // ensure whether checker has already checked successfully
                 if !self.checker.is_checked {
-                    if self.checker.current_check_char == string_char {
-                        self.lexeme += string_char.as_str();
-                        self.recognize_token();
-                        self.checker.is_checked = true;
-                        continue;
-                    } else {
-                        match self.checker.check_method {
-                            CheckMethod::InLine => {
+                    // if not, we have two match pattern, number(ignore current check char) and other
+                    match self.checker.check_for {
+                        CheckFor::Number => {}
+                        _ => {
+                            /*
+                            if not number, we also have two patterns,string and normal.
+                            Normal is designed for checking operator(like <=).
+                            String is designed for string literal
+                            */
+                            if self.checker.current_check_char == string_char {
                                 self.lexeme += string_char.as_str();
+                                match self.checker.check_for {
+                                    CheckFor::String => {
+                                        //we all know that python has two string definition token, " " and """ """(multi lines)
+                                        // """ situation
+                                        if self.lexeme.starts_with("\"\"") && self.lexeme.len() == 2
+                                        {
+                                            continue;
+                                        } else if self.lexeme.starts_with("\"\"\"")
+                                            && self.lexeme.len() == 3
+                                        {
+                                            self.checker.check_method = CheckMethod::All;
+                                            continue;
+                                        }
+
+                                        match self.checker.check_method {
+                                            CheckMethod::All => {
+                                                println!("All");
+                                                if !self.lexeme.ends_with("\"\"\"") {
+                                                    continue;
+                                                }
+                                            }
+                                            _ => {}
+                                        }
+                                        // " situation
+                                        self.add_token_with_literal(
+                                            STRING,
+                                            Literal::String(String::from(strip_quotes!(
+                                                self.lexeme
+                                            ))),
+                                        );
+                                        self.checker.is_checked = true;
+                                    }
+                                    CheckFor::Normal => {
+                                        self.recognize_token();
+                                        self.checker.is_checked = true;
+                                    }
+                                    _ => {}
+                                }
                                 continue;
+                            } else {
+                                match self.checker.check_method {
+                                    CheckMethod::Next => {
+                                        self.checker.is_checked = true;
+                                        self.recognize_token();
+                                    }
+                                    _ => {
+                                        self.lexeme += string_char.as_str();
+                                        continue;
+                                    }
+                                }
                             }
-                            CheckMethod::Next => {
-                                self.checker.is_checked = true;
-                                self.recognize_token();
-                            }
-                            _ => {}
                         }
                     }
                 }
@@ -161,27 +227,35 @@ impl Scanner {
                 self.current_char = char.to_string();
                 match self.current_char.as_str() {
                     "<" => {
-                        self.build_checker(String::from("="), CheckMethod::Next);
+                        self.build_checker(String::from("="), CheckMethod::Next, CheckFor::Normal);
                         continue;
                     }
                     "=" => {
-                        self.build_checker(String::from("="), CheckMethod::Next);
+                        self.build_checker(String::from("="), CheckMethod::Next, CheckFor::Normal);
                         continue;
                     }
                     "!" => {
-                        self.build_checker(String::from("="), CheckMethod::Next);
+                        self.build_checker(String::from("="), CheckMethod::Next, CheckFor::Normal);
                         continue;
                     }
                     ">" => {
-                        self.build_checker(String::from("="), CheckMethod::Next);
+                        self.build_checker(String::from("="), CheckMethod::Next, CheckFor::Normal);
                         continue;
                     }
                     "/" => {
-                        self.build_checker(String::from("/"), CheckMethod::Next);
+                        self.build_checker(String::from("/"), CheckMethod::Next, CheckFor::Normal);
                         continue;
                     }
                     "#" => continue 'line,
                     "\r" => continue,
+                    "\"" => {
+                        self.build_checker(
+                            String::from("\""),
+                            CheckMethod::InLine,
+                            CheckFor::String,
+                        );
+                        continue;
+                    }
                     _ => {}
                 }
                 self.recognize_token()
@@ -192,7 +266,7 @@ impl Scanner {
             token_type: TokenType::EOF,
             lineno: self.end_lineno,
             col_offset: self.col_offset + 2,
-            literal: 0,
+            literal: Literal::None,
             lexeme: "".to_string(),
         })
     }
@@ -225,11 +299,12 @@ impl Scanner {
             _ => throw_error(self.lineno, self.col_offset, "Unexpected Character"),
         }
     }
-    fn build_checker(&mut self, check_str: String, check_method: CheckMethod) {
+    fn build_checker(&mut self, check_str: String, check_method: CheckMethod, check_for: CheckFor) {
         self.checker = Checker {
             current_check_char: check_str,
             check_method,
             is_checked: false,
+            check_for,
         }
     }
 
@@ -238,7 +313,16 @@ impl Scanner {
             token_type,
             lineno: self.lineno,
             col_offset: self.col_offset,
-            literal: 0,
+            literal: Literal::None,
+            lexeme: self.lexeme.clone(),
+        })
+    }
+    fn add_token_with_literal(&mut self, token_type: TokenType, literal: Literal) {
+        self.token.push(Token {
+            token_type,
+            lineno: self.lineno,
+            col_offset: self.col_offset,
+            literal,
             lexeme: self.lexeme.clone(),
         })
     }
