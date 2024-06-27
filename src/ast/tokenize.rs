@@ -1,8 +1,5 @@
 use crate::ast::ast_struct::ASTNode;
-use crate::ast::tokenize::TokenType::{
-    BangEqual, EqualEqual, GreaterEqual, LeftParen, LessEqual, RightBrace, RightParen, BANG, COLON,
-    COMMA, DOT, EQUAL, GREATER, LESS, MINUS, PLUS, SEMICOLON, SLASH, SPACE, STAR, TAB,
-};
+use crate::ast::tokenize::TokenType::{BangEqual, EqualEqual, GreaterEqual, LeftParen, LessEqual, RightBrace, RightParen, BANG, COLON, Comma, Dot, EQUAL, GREATER, LESS, Minus, Plus, Semicolon, Slash, SPACE, Star, TAB, ExactDivision, Mod};
 
 #[derive(Debug)]
 pub enum TokenType {
@@ -11,13 +8,15 @@ pub enum TokenType {
     RightParen,
     LeftBrace,
     RightBrace,
-    COMMA,
-    DOT,
-    MINUS,
-    PLUS,
-    SEMICOLON,
-    SLASH,
-    STAR,
+    Comma,
+    Dot,
+    Minus,
+    Plus,
+    Mod,
+    ExactDivision,
+    Semicolon,
+    Slash,
+    Star,
     COLON,
 
     BANG,
@@ -39,18 +38,18 @@ pub enum TokenType {
     CLASS,
     ELSE,
     FALSE,
-    FUN,
     FOR,
     IF,
-    NIL,
     OR,
-    PRINT,
     RETURN,
-    SUPER,
-    THIS,
+    SELF,
     TRUE,
-    VAR,
     WHILE,
+    DEF,
+    IN,
+    LAMBDA,
+
+
 
     SPACE,
     TAB,
@@ -138,10 +137,9 @@ impl Scanner {
             for (col_offset, char) in line.chars().enumerate() {
                 let string_char = char.to_string();
                 if !self.checker.is_checked {
-                    println!("{}", self.lexeme);
                     if self.checker.current_check_char == string_char {
                         self.lexeme += string_char.as_str();
-                        self.recognize_token(self.lexeme.clone());
+                        self.recognize_token();
                         self.checker.is_checked = true;
                         continue;
                     } else {
@@ -152,7 +150,7 @@ impl Scanner {
                             }
                             CheckMethod::Next => {
                                 self.checker.is_checked = true;
-                                self.recognize_token(self.lexeme.clone());
+                                self.recognize_token();
                             }
                             _ => {}
                         }
@@ -170,12 +168,23 @@ impl Scanner {
                         self.build_checker(String::from("="), CheckMethod::Next);
                         continue;
                     }
+                    "!" => {
+                        self.build_checker(String::from("="), CheckMethod::Next);
+                        continue;
+                    }
+                    ">" => {
+                        self.build_checker(String::from("="), CheckMethod::Next);
+                        continue;
+                    }
+                    "/" => {
+                        self.build_checker(String::from("/"), CheckMethod::Next);
+                        continue;
+                    }
                     "#" => continue 'line,
                     "\r" => continue,
                     _ => {}
                 }
-                println!("{}", self.lexeme);
-                self.recognize_token(self.lexeme.clone())
+                self.recognize_token()
             }
         }
 
@@ -187,27 +196,30 @@ impl Scanner {
             lexeme: "".to_string(),
         })
     }
-    fn recognize_token(&mut self, lexeme: String) {
-        match lexeme.as_str() {
+    fn recognize_token(&mut self) {
+        match self.lexeme.as_str() {
             "(" => self.add_token(LeftParen),
             ")" => self.add_token(RightParen),
             "{" => self.add_token(LeftParen),
             "}" => self.add_token(RightBrace),
-            "," => self.add_token(COMMA),
-            "+" => self.add_token(PLUS),
-            "-" => self.add_token(MINUS),
-            "*" => self.add_token(STAR),
-            ";" => self.add_token(SEMICOLON),
-            "." => self.add_token(DOT),
+            "," => self.add_token(Comma),
+            "+" => self.add_token(Plus),
+            "-" => self.add_token(Minus),
+            "*" => self.add_token(Star),
+            "%" => self.add_token(Mod),
+            ";" => self.add_token(Semicolon),
+            "." => self.add_token(Dot),
             ":" => self.add_token(COLON),
             "<" => self.add_token(LESS),
             "<=" => self.add_token(LessEqual),
             "!" => self.add_token(BANG),
-
+            "!=" => self.add_token(BangEqual),
             "=" => self.add_token(EQUAL),
             "==" => self.add_token(EqualEqual),
             ">" => self.add_token(GREATER),
-            "/" => self.add_token(SLASH),
+            ">=" => self.add_token(GreaterEqual),
+            "/" => self.add_token(Slash),
+            "//" => self.add_token(ExactDivision),
             " " => self.add_token(SPACE),
             "\t" => self.add_token(TAB),
             _ => throw_error(self.lineno, self.col_offset, "Unexpected Character"),
@@ -230,7 +242,6 @@ impl Scanner {
             lexeme: self.lexeme.clone(),
         })
     }
-
 }
 pub fn throw_error(line: usize, col_offset: usize, message: &str) {
     println!("[{}:{}]Error:{}", line + 1, col_offset + 1, message)
