@@ -1,8 +1,11 @@
+use std::collections::HashMap;
+use std::ops::Deref;
 use crate::ast::ast_struct::ASTNode;
-use crate::ast::tokenize::TokenType::{BangEqual, Comma, Dot, EqualEqual, ExactDivision, GreaterEqual, LeftParen, LessEqual, Minus, Mod, Plus, RightBrace, RightParen, Semicolon, Slash, Star, BANG, COLON, EQUAL, GREATER, LESS, SPACE, STRING, TAB, NUMBER};
+use crate::ast::tokenize::TokenType::{BangEqual, Comma, Dot, EqualEqual, ExactDivision, GreaterEqual, LeftParen, LessEqual, Minus, Mod, Plus, RightBrace, RightParen, Semicolon, Slash, Star, AND, BANG, CLASS, COLON, DEF, ELSE, EQUAL, FALSE, FOR, GREATER, IF, LAMBDA, LESS, NUMBER, OR, RETURN, SPACE, STRING, TAB, TRUE, WHILE, IDENTIFIER};
 use crate::{count_char_occurrences, strip_quotes};
 
 #[derive(Debug)]
+#[derive(Clone)]
 pub enum TokenType {
     // Single-character tokens.
     LeftParen,
@@ -56,6 +59,7 @@ pub enum TokenType {
     None,
 }
 
+
 pub fn tokenize(code: String) -> ASTNode {
     ASTNode {
         body: vec![],
@@ -70,6 +74,7 @@ enum Literal {
     String(String),
     Float(f64),
     Int(isize),
+    Identifier(String),
     #[default]
     None,
 }
@@ -103,6 +108,7 @@ enum CheckMethod {
 enum CheckFor {
     String,
     Number,
+    Identifier,
     Normal,
 }
 #[derive(Debug)]
@@ -169,28 +175,44 @@ impl Scanner {
                 // handling multi chars
                 // ensure whether checker has already checked successfully
                 if !self.checker.is_checked {
-                    // if not, we have two match pattern, number(ignore current check char) and other
+                    // if not, we have three match pattern, number,identifier(ignore current check char) and other
                     match self.checker.check_for {
                         CheckFor::Number => {
                             if self.checker.current_check_char == "." && !('0'..'9').contains(&char)
                             {
                                 self.checker.is_checked = true;
                                 self.recognize_token();
-                            }else {
+                            } else {
                                 self.checker.current_check_char = String::from("");
-                                if ('0'..'9').contains(&char) || (string_char == "." && count_char_occurrences!(self.lexeme,'.') < 1) {
+                                if ('0'..'9').contains(&char)
+                                    || (string_char == "."
+                                        && count_char_occurrences!(self.lexeme, '.') < 1)
+                                {
                                     self.lexeme += string_char.as_str();
-                                    continue
+                                    continue;
                                 } else {
                                     self.checker.is_checked = true;
                                     if self.lexeme.contains(".") {
-                                        let float: f64 = format!("0{}", self.lexeme).parse::<f64>().unwrap();
+                                        let float: f64 =
+                                            format!("0{}", self.lexeme).parse::<f64>().unwrap();
                                         self.add_token_with_literal(NUMBER, Literal::Float(float))
                                     } else {
-                                        let int: isize = format!("0{}", self.lexeme).parse::<isize>().unwrap();
+                                        let int: isize =
+                                            format!("0{}", self.lexeme).parse::<isize>().unwrap();
                                         self.add_token_with_literal(NUMBER, Literal::Int(int))
                                     }
                                 }
+                            }
+                        }
+                        CheckFor::Identifier => {
+                            if ('a'..'z').contains(&char) || ('A'..'Z').contains(&char) || char=='_' {
+                                self.lexeme += string_char.as_str();
+                                continue
+                            } else {
+                                if !self.recognize_keywords(){
+                                    self.add_token_with_literal(IDENTIFIER,Literal::Identifier(self.lexeme.clone()));
+                                }
+                                self.checker.is_checked = true
                             }
                         }
                         _ => {
@@ -304,6 +326,13 @@ impl Scanner {
                                 CheckFor::Number,
                             );
                             continue;
+                        }else if ('a'..'z').contains(&char) || ('A'..'Z').contains(&char) || char=='_' {
+                            self.build_checker(
+                                String::from(""),
+                                CheckMethod::InLine,
+                                CheckFor::Identifier
+                            );
+                            continue
                         }
                     }
                 }
@@ -344,6 +373,33 @@ impl Scanner {
             "/" => self.add_token(Slash),
             "//" => self.add_token(ExactDivision),
             _ => throw_error(self.lineno, self.col_offset, "Unexpected Character"),
+        }
+    }
+
+    fn recognize_keywords(&mut self) -> bool {
+        let keyword_list = vec![
+            ("and".to_string(), AND),
+            ("class".to_string(), CLASS),
+            ("else".to_string(), ELSE),
+            ("false".to_string(), FALSE),
+            ("for".to_string(), FOR),
+            ("def".to_string(), DEF),
+            ("if".to_string(), IF),
+            ("lambda".to_string(), LAMBDA),
+            ("or".to_string(), OR),
+            ("return".to_string(), RETURN),
+            ("true".to_string(), TRUE),
+            ("while".to_string(), WHILE),
+        ];
+        let keywords_map: HashMap<String,TokenType> = keyword_list.into_iter().collect();
+        return match keywords_map.get(&self.lexeme.clone()) {
+            None => {
+                false
+            }
+            Some(token) => {
+                self.add_token(token.clone());
+                true
+            }
         }
     }
     fn build_checker(&mut self, check_str: String, check_method: CheckMethod, check_for: CheckFor) {
