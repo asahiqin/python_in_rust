@@ -1,10 +1,6 @@
 use crate::ast::ast_struct::ASTNode;
-use crate::ast::tokenize::TokenType::{
-    BangEqual, Comma, Dot, EqualEqual, ExactDivision, GreaterEqual, LeftParen, LessEqual, Minus,
-    Mod, Plus, RightBrace, RightParen, Semicolon, Slash, Star, BANG, COLON, EQUAL, GREATER, LESS,
-    SPACE, STRING, TAB,
-};
-use crate::strip_quotes;
+use crate::ast::tokenize::TokenType::{BangEqual, Comma, Dot, EqualEqual, ExactDivision, GreaterEqual, LeftParen, LessEqual, Minus, Mod, Plus, RightBrace, RightParen, Semicolon, Slash, Star, BANG, COLON, EQUAL, GREATER, LESS, SPACE, STRING, TAB, NUMBER};
+use crate::{count_char_occurrences, strip_quotes};
 
 #[derive(Debug)]
 pub enum TokenType {
@@ -141,6 +137,7 @@ pub fn build_scanner(source: &'static str) -> Scanner {
 impl Scanner {
     pub fn scan(&mut self) {
         let lines: Vec<&str> = self.source.lines().collect();
+        let mut intend: bool = true;
         'line: for (lineno, line) in lines.iter().enumerate() {
             self.lineno = lineno;
             if !self.checker.is_checked {
@@ -152,14 +149,50 @@ impl Scanner {
                     _ => {}
                 }
             }
+            intend = true;
             self.col_offset = 0;
             for (col_offset, char) in line.chars().enumerate() {
                 let string_char = char.to_string();
+                // Handling indentation in string
+                if string_char != " " && string_char != "\t" {
+                    intend = false
+                }
+                if intend && string_char == " " {
+                    self.add_token(SPACE);
+                    continue;
+                } else if intend && string_char == "\t" {
+                    self.add_token(TAB);
+                    continue;
+                } else if !intend && (string_char == " " || string_char == "\t") {
+                    continue;
+                }
+                // handling multi chars
                 // ensure whether checker has already checked successfully
                 if !self.checker.is_checked {
                     // if not, we have two match pattern, number(ignore current check char) and other
                     match self.checker.check_for {
-                        CheckFor::Number => {}
+                        CheckFor::Number => {
+                            if self.checker.current_check_char == "." && !('0'..'9').contains(&char)
+                            {
+                                self.checker.is_checked = true;
+                                self.recognize_token();
+                            }else {
+                                self.checker.current_check_char = String::from("");
+                                if ('0'..'9').contains(&char) || (string_char == "." && count_char_occurrences!(self.lexeme,'.') < 1) {
+                                    self.lexeme += string_char.as_str();
+                                    continue
+                                } else {
+                                    self.checker.is_checked = true;
+                                    if self.lexeme.contains(".") {
+                                        let float: f64 = format!("0{}", self.lexeme).parse::<f64>().unwrap();
+                                        self.add_token_with_literal(NUMBER, Literal::Float(float))
+                                    } else {
+                                        let int: isize = format!("0{}", self.lexeme).parse::<isize>().unwrap();
+                                        self.add_token_with_literal(NUMBER, Literal::Int(int))
+                                    }
+                                }
+                            }
+                        }
                         _ => {
                             /*
                             if not number, we also have two patterns,string and normal.
@@ -184,7 +217,6 @@ impl Scanner {
 
                                         match self.checker.check_method {
                                             CheckMethod::All => {
-                                                println!("All");
                                                 if !self.lexeme.ends_with("\"\"\"") {
                                                     continue;
                                                 }
@@ -256,7 +288,24 @@ impl Scanner {
                         );
                         continue;
                     }
-                    _ => {}
+                    "." => {
+                        self.build_checker(
+                            String::from("."),
+                            CheckMethod::InLine,
+                            CheckFor::Number,
+                        );
+                        continue;
+                    }
+                    _ => {
+                        if ('0'..'9').contains(&char) {
+                            self.build_checker(
+                                String::from(""),
+                                CheckMethod::InLine,
+                                CheckFor::Number,
+                            );
+                            continue;
+                        }
+                    }
                 }
                 self.recognize_token()
             }
@@ -294,8 +343,6 @@ impl Scanner {
             ">=" => self.add_token(GreaterEqual),
             "/" => self.add_token(Slash),
             "//" => self.add_token(ExactDivision),
-            " " => self.add_token(SPACE),
-            "\t" => self.add_token(TAB),
             _ => throw_error(self.lineno, self.col_offset, "Unexpected Character"),
         }
     }

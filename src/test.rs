@@ -4,7 +4,7 @@ use crate::strip_quotes;
 pub fn test() {
     println!("{:?}", tokenize("".to_string()));
     //println!("{}",strip_quotes!("\"\"\"hello\"\nworld\"\"\""));
-    let mut scan = build_scanner("\"h\"\n+\"\"\"test\nmulti lines\"\"\"-%//+#aaa");
+    let mut scan = build_scanner("  \"h\"\n+\"\"\"test\nmulti lines\"\"\"     1234-%//+23.33.222#aaa");
     scan.scan();
     println!("{:?}", scan.token)
 }
