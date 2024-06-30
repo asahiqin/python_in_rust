@@ -5,11 +5,11 @@
 
 We support syntax for partial Python 3.10
 What is implemented?  
-[] Basic Variable Operation  
-[] Condition Statement  
-[] Loop Statement(inluding 'for' and 'while')  
-[] Function(including 'def' and 'lambda')  
-[] Class  
+- [ ] Basic Variable Operation  
+- [ ] Condition Statement  
+- [ ] Loop Statement(inluding 'for' and 'while')  
+- [ ] Function(including 'def' and 'lambda')  
+- [ ] Class  
 
 
 ## Building
