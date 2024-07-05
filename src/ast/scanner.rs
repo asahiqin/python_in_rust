@@ -1,11 +1,15 @@
-use std::collections::HashMap;
-use std::ops::Deref;
 use crate::ast::ast_struct::ASTNode;
-use crate::ast::tokenize::TokenType::{BangEqual, Comma, Dot, EqualEqual, ExactDivision, GreaterEqual, LeftParen, LessEqual, Minus, Mod, Plus, RightBrace, RightParen, Semicolon, Slash, Star, AND, BANG, CLASS, COLON, DEF, ELSE, EQUAL, FALSE, FOR, GREATER, IF, LAMBDA, LESS, NUMBER, OR, RETURN, SPACE, STRING, TAB, TRUE, WHILE, IDENTIFIER};
+use crate::ast::scanner::TokenType::{
+    BangEqual, Comma, Dot, EqualEqual, ExactDivision, GreaterEqual, LeftBrace, LeftParen,
+    LessEqual, Minus, Mod, Plus, Pow, RightBrace, RightParen, Semicolon, Slash, Star, AND, BANG,
+    CLASS, COLON, DEF, ELSE, EQUAL, FALSE, FOR, GREATER, IDENTIFIER, IF, LAMBDA, LESS, NOT, NUMBER,
+    OR, RETURN, SPACE, STRING, TAB, TRUE, WHILE,
+};
 use crate::{count_char_occurrences, strip_quotes};
+use clap::builder::Str;
+use std::collections::HashMap;
 
-#[derive(Debug)]
-#[derive(Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum TokenType {
     // Single-character tokens.
     LeftParen,
@@ -22,6 +26,7 @@ pub enum TokenType {
     Slash,
     Star,
     COLON,
+    Pow,
 
     BANG,
     BangEqual,
@@ -52,6 +57,7 @@ pub enum TokenType {
     DEF,
     IN,
     LAMBDA,
+    NOT,
 
     SPACE,
     TAB,
@@ -59,18 +65,8 @@ pub enum TokenType {
     None,
 }
 
-
-pub fn tokenize(code: String) -> ASTNode {
-    ASTNode {
-        body: vec![],
-        lineno: 1,
-        end_lineno: 1,
-        col_offset: 0,
-        end_col_offset: 0,
-    }
-}
-#[derive(Debug, Default)]
-enum Literal {
+#[derive(Debug, Default, Clone)]
+pub enum Literal {
     String(String),
     Float(f64),
     Int(isize),
@@ -78,21 +74,32 @@ enum Literal {
     #[default]
     None,
 }
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Token {
-    token_type: TokenType,
-    lineno: usize,
-    col_offset: usize,
-    literal: Literal,
-    lexeme: String,
+    pub(crate) token_type: TokenType,
+    pub lineno: usize,
+    pub col_offset: usize,
+    pub(crate) literal: Literal,
+    pub(crate) lexeme: String,
+}
+impl Token {
+    pub(crate) fn null() -> Token {
+        Token {
+            token_type: TokenType::None,
+            lineno: 0,
+            col_offset: 0,
+            literal: Default::default(),
+            lexeme: "".to_string(),
+        }
+    }
 }
 #[derive(Debug)]
 pub struct Scanner {
-    source: &'static str,
-    lineno: usize,
-    col_offset: usize,
-    end_lineno: usize,
-    end_col_offset: usize,
+    source: String,
+    pub(crate) lineno: usize,
+    pub(crate) col_offset: usize,
+    pub(crate) end_lineno: usize,
+    pub(crate) end_col_offset: usize,
     current_char: String,
     pub(crate) token: Vec<Token>,
     lexeme: String,
@@ -119,9 +126,9 @@ pub struct Checker {
     is_checked: bool,
     check_for: CheckFor,
 }
-pub fn build_scanner(source: &'static str) -> Scanner {
-    let end_lineno = source.lines().count();
-    let end_col_offset = source.lines().last().unwrap().len();
+pub fn build_scanner(source: String) -> Scanner {
+    let end_lineno = source.lines().count()-1;
+    let end_col_offset = source.lines().last().unwrap().len()-1;
     Scanner {
         source,
         lineno: 0,
@@ -139,38 +146,46 @@ pub fn build_scanner(source: &'static str) -> Scanner {
         },
     }
 }
-
+impl Scanner {
+    fn line_checker(&mut self) {
+        match self.checker.check_method {
+            CheckMethod::InLine => {
+                throw_error(self.lineno, self.col_offset + 1, "Unexpected token")
+            }
+            CheckMethod::All => self.lexeme += "\n",
+            _ => {}
+        }
+    }
+}
 impl Scanner {
     pub fn scan(&mut self) {
-        let lines: Vec<&str> = self.source.lines().collect();
+        let binding = self.source.clone();
+        let lines: Vec<&str> = binding.lines().collect();
         let mut intend: bool = true;
         'line: for (lineno, line) in lines.iter().enumerate() {
             self.lineno = lineno;
             if !self.checker.is_checked {
-                match self.checker.check_method {
-                    CheckMethod::InLine => {
-                        throw_error(lineno, self.col_offset + 1, "Unexpected token")
-                    }
-                    CheckMethod::All => self.lexeme += "\n",
-                    _ => {}
-                }
+                self.line_checker()
             }
             intend = true;
             self.col_offset = 0;
-            for (col_offset, char) in line.chars().enumerate() {
+            'char: for (col_offset, char) in line.chars().enumerate() {
                 let string_char = char.to_string();
                 // Handling indentation in string
                 if string_char != " " && string_char != "\t" {
                     intend = false
                 }
-                if intend && string_char == " " {
-                    self.add_token(SPACE);
+                if intend {
+                    if string_char == " " {
+                        self.add_token(SPACE);
+                    } else if string_char == "\t" {
+                        self.add_token(TAB);
+                    }
                     continue;
-                } else if intend && string_char == "\t" {
-                    self.add_token(TAB);
-                    continue;
-                } else if !intend && (string_char == " " || string_char == "\t") {
-                    continue;
+                } else {
+                    if string_char == " " || string_char == "\t" {
+                        continue;
+                    }
                 }
                 // handling multi chars
                 // ensure whether checker has already checked successfully
@@ -205,12 +220,18 @@ impl Scanner {
                             }
                         }
                         CheckFor::Identifier => {
-                            if ('a'..'z').contains(&char) || ('A'..'Z').contains(&char) || char=='_' {
+                            if ('a'..'z').contains(&char)
+                                || ('A'..'Z').contains(&char)
+                                || char == '_'
+                            {
                                 self.lexeme += string_char.as_str();
-                                continue
+                                continue;
                             } else {
-                                if !self.recognize_keywords(){
-                                    self.add_token_with_literal(IDENTIFIER,Literal::Identifier(self.lexeme.clone()));
+                                if !self.recognize_keywords() {
+                                    self.add_token_with_literal(
+                                        IDENTIFIER,
+                                        Literal::Identifier(self.lexeme.clone()),
+                                    );
                                 }
                                 self.checker.is_checked = true
                             }
@@ -318,6 +339,14 @@ impl Scanner {
                         );
                         continue;
                     }
+                    "*" => {
+                        self.build_checker(
+                            String::from("*"),
+                            CheckMethod::InLine,
+                            CheckFor::Number,
+                        );
+                        continue;
+                    }
                     _ => {
                         if ('0'..'9').contains(&char) {
                             self.build_checker(
@@ -326,24 +355,64 @@ impl Scanner {
                                 CheckFor::Number,
                             );
                             continue;
-                        }else if ('a'..'z').contains(&char) || ('A'..'Z').contains(&char) || char=='_' {
+                        } else if ('a'..'z').contains(&char)
+                            || ('A'..'Z').contains(&char)
+                            || char == '_'
+                        {
                             self.build_checker(
                                 String::from(""),
                                 CheckMethod::InLine,
-                                CheckFor::Identifier
+                                CheckFor::Identifier,
                             );
-                            continue
+                            continue;
                         }
                     }
                 }
                 self.recognize_token()
             }
         }
-
+        if !self.checker.is_checked {
+            match self.checker.check_for {
+                CheckFor::String => {
+                    self.add_token_with_literal(
+                        STRING,
+                        Literal::String(String::from(strip_quotes!(
+                                                self.lexeme
+                                            ))),
+                    );
+                    self.checker.is_checked = true;
+                }
+                CheckFor::Number => {
+                    self.checker.is_checked = true;
+                    if self.lexeme.contains(".") {
+                        let float: f64 =
+                            format!("0{}", self.lexeme).parse::<f64>().unwrap();
+                        self.add_token_with_literal(NUMBER, Literal::Float(float))
+                    } else {
+                        let int: isize =
+                            format!("0{}", self.lexeme).parse::<isize>().unwrap();
+                        self.add_token_with_literal(NUMBER, Literal::Int(int))
+                    }
+                }
+                CheckFor::Identifier => {
+                    if !self.recognize_keywords() {
+                        self.add_token_with_literal(
+                            IDENTIFIER,
+                            Literal::Identifier(self.lexeme.clone()),
+                        );
+                    }
+                    self.checker.is_checked = true
+                }
+                CheckFor::Normal => {
+                    self.checker.is_checked = true;
+                    self.recognize_token()
+                }
+            }
+        }
         self.token.push(Token {
             token_type: TokenType::EOF,
             lineno: self.end_lineno,
-            col_offset: self.col_offset + 2,
+            col_offset: self.col_offset + 1,
             literal: Literal::None,
             lexeme: "".to_string(),
         })
@@ -352,7 +421,7 @@ impl Scanner {
         match self.lexeme.as_str() {
             "(" => self.add_token(LeftParen),
             ")" => self.add_token(RightParen),
-            "{" => self.add_token(LeftParen),
+            "{" => self.add_token(LeftBrace),
             "}" => self.add_token(RightBrace),
             "," => self.add_token(Comma),
             "+" => self.add_token(Plus),
@@ -372,6 +441,7 @@ impl Scanner {
             ">=" => self.add_token(GreaterEqual),
             "/" => self.add_token(Slash),
             "//" => self.add_token(ExactDivision),
+            "**" => self.add_token(Pow),
             _ => throw_error(self.lineno, self.col_offset, "Unexpected Character"),
         }
     }
@@ -390,17 +460,16 @@ impl Scanner {
             ("return".to_string(), RETURN),
             ("true".to_string(), TRUE),
             ("while".to_string(), WHILE),
+            ("not".to_string(), NOT),
         ];
-        let keywords_map: HashMap<String,TokenType> = keyword_list.into_iter().collect();
+        let keywords_map: HashMap<String, TokenType> = keyword_list.into_iter().collect();
         return match keywords_map.get(&self.lexeme.clone()) {
-            None => {
-                false
-            }
+            None => false,
             Some(token) => {
                 self.add_token(token.clone());
                 true
             }
-        }
+        };
     }
     fn build_checker(&mut self, check_str: String, check_method: CheckMethod, check_for: CheckFor) {
         self.checker = Checker {

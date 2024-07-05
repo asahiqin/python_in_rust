@@ -1,11 +1,14 @@
-use crate::ast::tokenize::{build_scanner, tokenize};
+use crate::ast::ast_analyze::build_parser;
+use crate::ast::scanner::build_scanner;
 use crate::strip_quotes;
 
 pub fn test() {
-    println!("{:?}", tokenize("".to_string()));
     //println!("{}",strip_quotes!("\"\"\"hello\"\nworld\"\"\""));
-    let mut scan =
-        build_scanner("  \"h\"\n+\"\"\"test\nmulti lines\"\"\"     1234-%//+23.33.222or,_aaa_,and,_test_#aaa");
-    scan.scan();
-    println!("{:?}", scan.token)
+    let source = String::from("1+3==677");
+    let mut scanner = build_scanner(source);
+    scanner.scan();
+    println!("{:?}", scanner.token);
+    let mut parser = build_parser(scanner);
+    parser.parser();
+    println!("{:?}", parser)
 }

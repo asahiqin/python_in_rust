@@ -1,5 +1,5 @@
 # Python in Rust
-### A python interpreter wirten in rust
+### A python interpreter written in rust
 
 ## Feature
 
@@ -7,7 +7,7 @@ We support syntax for partial Python 3.10
 What is implemented?  
 - [ ] Basic Variable Operation  
 - [ ] Condition Statement  
-- [ ] Loop Statement(inluding 'for' and 'while')  
+- [ ] Loop Statement(including 'for' and 'while')  
 - [ ] Function(including 'def' and 'lambda')  
 - [ ] Class  
 

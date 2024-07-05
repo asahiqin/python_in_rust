@@ -18,3 +18,4 @@ macro_rules! count_char_occurrences {
         $string.chars().filter(|&c| c == $char).count()
     };
 }
+
