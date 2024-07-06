@@ -8,28 +8,28 @@ pub struct ASTNode {
     pub(crate) col_offset: usize,
     pub(crate) end_col_offset: usize,
 }
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Type {
     Assign(Box<Assign>),
     Constant(Constant),
     Name(Name),
-    BinOp(Box<BinOp>),
+    BinOp(BinOp),
     Compare(Compare),
-    UnaryOp(Box<UnaryOp>),
+    UnaryOp(UnaryOp),
 }
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Assign {
     pub(crate) target: Name,
-    pub(crate) value: Type,
+    pub(crate) value: Box<Type>,
     pub(crate) type_comment: String,
 }
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Name {
     pub(crate) id: String,
     pub(crate) value: Constant,
     pub(crate) type_comment: String,
 }
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum DataType {
     Int(isize),
     Float(f64),
@@ -39,7 +39,7 @@ pub enum DataType {
     Dictionary(HashMap<DataType, DataType>),
     None,
 }
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Constant {
     pub(crate) value: DataType,
     pub(crate) type_comment: String,
@@ -52,7 +52,7 @@ impl Constant {
         };
     }
 }
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Operator {
     Add,
     Sub,
@@ -69,22 +69,23 @@ pub enum Operator {
     LtE,
     GtE,
     Not,
+    UAdd,
     USub,
 }
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct BinOp {
     pub left: Box<Type>,
     pub op: Operator,
     pub right: Box<Type>,
 }
-#[derive(Debug)]
-pub struct Compare {
+#[derive(Debug, Clone)]
+pub struct Compare{
     pub(crate) left: Box<Type>,
-    pub(crate) op: Vec<Operator>,
-    pub(crate) comparators: Vec<Box<Type>>,
+    pub(crate) ops: Vec<Operator>,
+    pub(crate) comparators:Box<Vec<Type>>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct UnaryOp {
     pub op: Operator,
     pub operand: Box<Type>,

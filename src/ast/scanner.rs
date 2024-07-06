@@ -373,17 +373,17 @@ impl Scanner {
             self.col_offset = 0;
             'char: for (col_offset, char) in line.chars().enumerate() {
                 let string_char = char.to_string();
-                // Handling indentation in string
-                let tmp_intend = self.check_intend(intend, string_char.clone());
-                intend = tmp_intend.0;
-                if tmp_intend.1 {
-                    continue;
-                }
                 // handling multi chars
                 // ensure whether checker has already checked successfully
                 if !self.checker.is_checked {
                     // if not, we have three match pattern, number,identifier(ignore current check char) and other
                     if self.check_for_all(&char, &string_char){continue}
+                }
+                // Handling indentation in string
+                let tmp_intend = self.check_intend(intend, string_char.clone());
+                intend = tmp_intend.0;
+                if tmp_intend.1 {
+                    continue;
                 }
                 self.lexeme = string_char;
                 self.col_offset = col_offset;

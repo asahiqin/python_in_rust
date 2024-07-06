@@ -1,3 +1,5 @@
+use std::error::Error;
+use std::fmt::Error as OtherError;
 use crate::ast::ast_struct::{
     ASTNode, BinOp, Compare, Constant, DataType, Operator, Type, UnaryOp,
 };
@@ -91,83 +93,83 @@ impl Parser {
     pub fn parser(&mut self) {
         println!("{:?}", self.expression())
     }
-    fn primary(&mut self) -> Type {
+    fn primary(&mut self) -> Result<Type, Box<dyn Error>> {
         if self.token_iter.catch([TokenType::TRUE]) {
-            return Type::Constant(Constant::new(DataType::Bool(true)));
+            return Ok(Type::Constant(Constant::new(DataType::Bool(true))));
         }
         if self.token_iter.catch([TokenType::FALSE]) {
-            return Type::Constant(Constant::new(DataType::Bool(false)));
+            return Ok(Type::Constant(Constant::new(DataType::Bool(false))));
         }
         if self
             .token_iter
             .catch([TokenType::STRING, TokenType::NUMBER])
         {
-            return Type::Constant(Constant::new(match self.token_iter.previous().literal {
+            return Ok(Type::Constant(Constant::new(match self.token_iter.previous().literal {
                 Literal::String(str) => DataType::String(str),
                 Literal::Float(float) => DataType::Float(float),
                 Literal::Int(int) => DataType::Int(int),
                 _ => DataType::Int(0),
-            }));
+            })));
         }
-        if self.token_iter.check(LeftParen) {
+        if self.token_iter.catch([LeftParen]) {
             let expr = self.expression();
             self.token_iter
                 .consume(TokenType::RightBrace, "".to_string());
-            return expr;
+            return Ok(expr);
         }
-        return Type::Constant(Constant {
-            value: DataType::None,
-            type_comment: "".to_string(),
-        });
+        Err(std::fmt::Error.into())
     }
-    fn unary(&mut self) -> Type {
-        if self.token_iter.catch([NOT, Minus]) {
+    fn unary(&mut self) -> Result<Type, Box<dyn Error>> {
+        if self.token_iter.catch([NOT, Minus, Plus]) {
             let token = match self.token_iter.previous().token_type {
                 NOT => Operator::Not,
+                Plus => Operator::UAdd,
                 _ => Operator::USub,
             };
-            let operand = self.unary();
-            return Type::UnaryOp(Box::from(UnaryOp {
+            let operand = self.unary()?;
+            return Ok(Type::UnaryOp(UnaryOp {
                 op: token,
                 operand: Box::new(operand),
             }));
         }
-        return self.primary();
+        let primary = self.primary()?;
+        return Ok(primary);
     }
-    fn factor(&mut self) -> Type {
-        let expr: Type = self.unary();
+    fn factor(&mut self) -> Result<Type, Box<dyn Error>> {
+        let expr: Type = self.unary()?;
         while self.token_iter.catch([Star, Slash]) {
             let token = match self.token_iter.previous().token_type {
                 Star => Operator::Mult,
                 _ => Operator::Div,
             };
-            let right = self.unary();
-            return Type::BinOp(Box::from(BinOp {
+            let right = self.unary()?;
+            return Ok(Type::BinOp(BinOp {
                 left: Box::new(expr),
                 op: token,
                 right: Box::new(right),
             }));
         }
-        expr
+        Ok(expr)
     }
-    fn term(&mut self) -> Type {
-        let expr: Type = self.factor();
+    fn term(&mut self) -> Result<Type, Box<dyn std::error::Error>> {
+        let expr: Type = self.factor()?;
         while self.token_iter.catch([Minus, Plus]) {
             let token = match self.token_iter.previous().token_type {
                 Minus => Operator::Sub,
                 _ => Operator::Add,
             };
-            let right = self.factor();
-            return Type::BinOp(Box::from(BinOp {
+            let right = self.factor()?;
+            return Ok(Type::BinOp(BinOp {
                 left: Box::new(expr),
                 op: token,
                 right: Box::new(right),
             }));
         }
-        expr
+        Ok(expr)
     }
-    fn comparison(&mut self) -> Type {
-        let expr: Type = self.term();
+    /*
+    fn comparison(&mut self) -> Result<Type, Box<dyn std::error::Error>> {
+        let expr: Type = self.term()?;
         while self
             .token_iter
             .catch([GreaterEqual, LessEqual, LESS, GREATER])
@@ -178,32 +180,56 @@ impl Parser {
                 LESS => Operator::Lt,
                 _ => Operator::Gt,
             };
-            let comparators = self.comparison();
-            return Type::Compare(Compare {
+            let comparators = self.comparison()?;
+            return Ok(Type::Compare(Compare {
                 left: Box::new(expr),
-                op: vec![token],
-                comparators: vec![Box::new(comparators)],
-            });
+                ops: vec![token],
+                comparators: Box::new(vec![comparators]),
+            }));
         }
-        expr
+        Ok(expr)
     }
-    fn equality(&mut self) -> Type {
-        let expr: Type = self.comparison();
-        while self.token_iter.catch([BangEqual, EqualEqual]) {
+     */
+    fn comparison(&mut self) -> Result<Type, Box<dyn std::error::Error>> {
+        let expr: Type = self.term()?;
+        while self.token_iter.catch([BangEqual, EqualEqual, GreaterEqual, LessEqual, LESS, GREATER]) {
             let token = match self.token_iter.previous().token_type {
                 BangEqual => Operator::NotEq,
-                _ => Operator::Eq,
+                EqualEqual => Operator::Eq,
+                GreaterEqual => Operator::GtE,
+                LessEqual => Operator::LtE,
+                LESS => Operator::Lt,
+                _ => Operator::Gt,
             };
-            let comparators = self.comparison();
-            return Type::Compare(Compare {
+            let comparator = self.comparison()?;
+            let mut comparators:Vec<Type>= vec![];
+            let mut ops:Vec<Operator> = vec![token];
+            match comparator {
+                Type::Compare(compare) =>{
+                    comparators.push(*compare.left);
+                    comparators.extend(compare.comparators.into_iter().clone());
+                    ops.extend(compare.ops.into_iter().clone())
+                }
+                _ => {
+                    comparators.push(comparator)
+                }
+            }
+            return Ok(Type::Compare(Compare {
                 left: Box::new(expr),
-                op: vec![token],
-                comparators: vec![Box::new(comparators)],
-            });
+                ops,
+                comparators: Box::from(comparators),
+            }));
         }
-        expr
+        Ok(expr)
     }
     fn expression(&mut self) -> Type {
-        return self.equality();
+        match self.comparison() {
+            Ok(expr) => {
+                return expr
+            }
+            Err(_) => {
+                panic!("{:?}", self.token_iter.peek())
+            }
+        }
     }
 }
