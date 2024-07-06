@@ -1,6 +1,11 @@
-use crate::ast::ast_struct::{ASTNode, BinOp, Compare, Constant, DataType, Operator, Type, UnaryOp};
+use crate::ast::ast_struct::{
+    ASTNode, BinOp, Compare, Constant, DataType, Operator, Type, UnaryOp,
+};
+use crate::ast::scanner::TokenType::{
+    BangEqual, EqualEqual, GreaterEqual, LeftParen, LessEqual, Minus, Plus, Slash, Star, EOF,
+    GREATER, LESS, NOT,
+};
 use crate::ast::scanner::{Literal, Scanner, Token, TokenType};
-use crate::ast::scanner::TokenType::{BangEqual, EOF, EqualEqual, GREATER, GreaterEqual, LeftParen, LESS, LessEqual, Minus, NOT, Plus, Slash, Star};
 
 #[derive(Debug)]
 pub struct TokenIter {
@@ -49,9 +54,16 @@ impl TokenIter {
         }
         false
     }
-    fn consume(&mut self, token_type: TokenType, err:String) -> Token {
-        if self.check(token_type) { return self.advance()}
-        panic!("[{},{}] {}",self.peek().lineno+1,self.peek().col_offset+1,self.peek().lexeme)
+    fn consume(&mut self, token_type: TokenType, err: String) -> Token {
+        if self.check(token_type) {
+            return self.advance();
+        }
+        panic!(
+            "[{},{}] {}",
+            self.peek().lineno + 1,
+            self.peek().col_offset + 1,
+            self.peek().lexeme
+        )
     }
 }
 #[derive(Debug)]
@@ -80,34 +92,36 @@ impl Parser {
         println!("{:?}", self.expression())
     }
     fn primary(&mut self) -> Type {
-        if self.token_iter.catch([TokenType::TRUE]) { return Type::Constant(Constant::new(DataType::Bool(true)))}
-        if self.token_iter.catch([TokenType::FALSE]) { return Type::Constant(Constant::new(DataType::Bool(false)))}
-        if self.token_iter.catch([TokenType::STRING,TokenType::NUMBER]){
-            return Type::Constant(Constant::new(
-                match self.token_iter.previous().literal {
-                    Literal::String(str) => {
-                        DataType::String(str)
-                    }
-                    Literal::Float(float) => {
-                        DataType::Float(float)
-                    }
-                    Literal::Int(int) => {
-                        DataType::Int(int)
-                    }
-                    _ => DataType::Int(0)
-                }
-            ))
+        if self.token_iter.catch([TokenType::TRUE]) {
+            return Type::Constant(Constant::new(DataType::Bool(true)));
         }
-        if self.token_iter.check(LeftParen){
+        if self.token_iter.catch([TokenType::FALSE]) {
+            return Type::Constant(Constant::new(DataType::Bool(false)));
+        }
+        if self
+            .token_iter
+            .catch([TokenType::STRING, TokenType::NUMBER])
+        {
+            return Type::Constant(Constant::new(match self.token_iter.previous().literal {
+                Literal::String(str) => DataType::String(str),
+                Literal::Float(float) => DataType::Float(float),
+                Literal::Int(int) => DataType::Int(int),
+                _ => DataType::Int(0),
+            }));
+        }
+        if self.token_iter.check(LeftParen) {
             let expr = self.expression();
-            self.token_iter.consume(TokenType::RightBrace, "".to_string());
-            return expr
+            self.token_iter
+                .consume(TokenType::RightBrace, "".to_string());
+            return expr;
         }
-        return Type::Constant(Constant { value: DataType::None, type_comment: "".to_string() })
-
+        return Type::Constant(Constant {
+            value: DataType::None,
+            type_comment: "".to_string(),
+        });
     }
     fn unary(&mut self) -> Type {
-        if self.token_iter.catch([NOT,Minus]){
+        if self.token_iter.catch([NOT, Minus]) {
             let token = match self.token_iter.previous().token_type {
                 NOT => Operator::Not,
                 _ => Operator::USub,
@@ -115,10 +129,10 @@ impl Parser {
             let operand = self.unary();
             return Type::UnaryOp(Box::from(UnaryOp {
                 op: token,
-                operand: Box::new(operand)
-            }))
+                operand: Box::new(operand),
+            }));
         }
-        return self.primary()
+        return self.primary();
     }
     fn factor(&mut self) -> Type {
         let expr: Type = self.unary();
@@ -190,6 +204,6 @@ impl Parser {
         expr
     }
     fn expression(&mut self) -> Type {
-        return self.equality()
+        return self.equality();
     }
 }

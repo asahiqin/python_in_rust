@@ -127,8 +127,8 @@ pub struct Checker {
     check_for: CheckFor,
 }
 pub fn build_scanner(source: String) -> Scanner {
-    let end_lineno = source.lines().count()-1;
-    let end_col_offset = source.lines().last().unwrap().len()-1;
+    let end_lineno = source.lines().count() - 1;
+    let end_col_offset = source.lines().last().unwrap().len() - 1;
     Scanner {
         source,
         lineno: 0,
@@ -156,6 +156,208 @@ impl Scanner {
             _ => {}
         }
     }
+    fn add_for_number(&mut self) {
+        self.checker.is_checked = true;
+        if self.lexeme.contains(".") {
+            let float: f64 = format!("0{}", self.lexeme).parse::<f64>().unwrap();
+            self.add_token_with_literal(NUMBER, Literal::Float(float))
+        } else {
+            let int: isize = format!("0{}", self.lexeme).parse::<isize>().unwrap();
+            self.add_token_with_literal(NUMBER, Literal::Int(int))
+        }
+    }
+    fn check_for_number(&mut self, char: &char, string_char: String) -> bool {
+        if self.checker.current_check_char == "." && !('0'..'9').contains(&char) {
+            self.checker.is_checked = true;
+            self.recognize_token();
+        } else {
+            self.checker.current_check_char = String::from("");
+            if ('0'..'9').contains(&char)
+                || (string_char == "." && count_char_occurrences!(self.lexeme, '.') < 1)
+            {
+                self.lexeme += string_char.as_str();
+                return true;
+            } else {
+                self.checker.is_checked = true;
+                self.add_for_number();
+            }
+        }
+        false
+    }
+    fn check_for_string(&mut self) -> bool {
+        //we all know that python has two string definition token, " " and """ """(multi lines)
+        // """ situation
+        if self.lexeme.starts_with("\"\"") && self.lexeme.len() == 2 {
+            return true;
+        } else if self.lexeme.starts_with("\"\"\"") && self.lexeme.len() == 3 {
+            self.checker.check_method = CheckMethod::All;
+            return true;
+        }
+
+        match self.checker.check_method {
+            CheckMethod::All => {
+                if !self.lexeme.ends_with("\"\"\"") {
+                    return true;
+                }
+            }
+            _ => {}
+        }
+        // " situation
+        self.add_for_string();
+        false
+    }
+    fn add_for_string(&mut self) {
+        self.add_token_with_literal(
+            STRING,
+            Literal::String(String::from(strip_quotes!(self.lexeme))),
+        );
+        self.checker.is_checked = true;
+    }
+    fn check_for_identifier(&mut self, char: &char, string_char: String) -> bool {
+        if ('a'..'z').contains(&char) || ('A'..'Z').contains(&char) || char.clone() == '_' {
+            self.lexeme += string_char.as_str();
+            return true;
+        } else {
+            self.add_for_identifier()
+        }
+        false
+    }
+    fn add_for_identifier(&mut self) {
+        if !self.recognize_keywords() {
+            self.add_token_with_literal(IDENTIFIER, Literal::Identifier(self.lexeme.clone()));
+        }
+        self.checker.is_checked = true
+    }
+    fn check_for_others(&mut self, string_char: String) -> bool {
+        if self.checker.current_check_char == string_char {
+            self.lexeme += string_char.as_str();
+            match self.checker.check_for {
+                CheckFor::String => {
+                    if self.check_for_string() {
+                        return true;
+                    }
+                }
+                CheckFor::Normal => {
+                    self.recognize_token();
+                    self.checker.is_checked = true;
+                }
+                _ => {}
+            }
+            return true;
+        } else {
+            match self.checker.check_method {
+                CheckMethod::Next => {
+                    self.checker.is_checked = true;
+                    self.recognize_token();
+                }
+                _ => {
+                    self.lexeme += string_char.as_str();
+                    return true;
+                }
+            }
+        }
+        false
+    }
+    fn build_checker_for_others(&mut self, char: &char) -> bool {
+        if ('0'..'9').contains(&char) {
+            self.build_checker(String::from(""), CheckMethod::InLine, CheckFor::Number);
+            return true;
+        } else if ('a'..'z').contains(char) || ('A'..'Z').contains(char) || char.clone() == '_' {
+            self.build_checker(String::from(""), CheckMethod::InLine, CheckFor::Identifier);
+            return true;
+        }
+        false
+    }
+    fn check_for_all(&mut self, char:&char, string_char: &String) -> bool{
+        match self.checker.check_for {
+            CheckFor::Number => {
+                if self.check_for_number(&char, string_char.clone()) {
+                    return true;
+                }
+            }
+            CheckFor::Identifier => {
+                if self.check_for_identifier(&char, string_char.clone()) {
+                    return true;
+                }
+            }
+            _ => {
+                /*
+                if not number, we also have two patterns,string and normal.
+                Normal is designed for checking operator(like <=).
+                String is designed for string literal
+                */
+                if self.check_for_others(string_char.clone()) {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+    fn build_checker_for_normal(&mut self, char: &char) -> (bool, bool) {
+        // first bool is to continue char, second bool is to continue line
+        match self.current_char.as_str() {
+            "<" => {
+                self.build_checker(String::from("="), CheckMethod::Next, CheckFor::Normal);
+                return (true, false);
+            }
+            "=" => {
+                self.build_checker(String::from("="), CheckMethod::Next, CheckFor::Normal);
+                return (true, false);
+            }
+            "!" => {
+                self.build_checker(String::from("="), CheckMethod::Next, CheckFor::Normal);
+                return (true, false);
+            }
+            ">" => {
+                self.build_checker(String::from("="), CheckMethod::Next, CheckFor::Normal);
+                return (true, false);
+            }
+            "/" => {
+                self.build_checker(String::from("/"), CheckMethod::Next, CheckFor::Normal);
+                return (true, false);
+            }
+            "#" => return (true, true),
+            "\r" => return (true, false),
+            "\"" => {
+                self.build_checker(String::from("\""), CheckMethod::InLine, CheckFor::String);
+                return (true, false);
+            }
+            "." => {
+                self.build_checker(String::from("."), CheckMethod::InLine, CheckFor::Number);
+                return (true, false);
+            }
+            "*" => {
+                self.build_checker(String::from("*"), CheckMethod::Next, CheckFor::Normal);
+                return (true, false);
+            }
+            _ => {
+                if self.build_checker_for_others(&char) {
+                    return (true, false);
+                }
+            }
+        }
+        return (false, false);
+    }
+
+    fn check_intend(&mut self, mut intend: bool, string_char: String) -> (bool, bool) {
+        // first bool is bool intend's value, second is whether the loop continue
+        if string_char != " " && string_char != "\t" {
+            intend = false
+        }
+        if intend {
+            if string_char == " " {
+                self.add_token(SPACE);
+            } else if string_char == "\t" {
+                self.add_token(TAB);
+            }
+            return (intend, true);
+        } else {
+            if string_char == " " || string_char == "\t" {
+                return (intend, true);
+            }
+        }
+        (intend, false)
+    }
 }
 impl Scanner {
     pub fn scan(&mut self) {
@@ -172,201 +374,26 @@ impl Scanner {
             'char: for (col_offset, char) in line.chars().enumerate() {
                 let string_char = char.to_string();
                 // Handling indentation in string
-                if string_char != " " && string_char != "\t" {
-                    intend = false
-                }
-                if intend {
-                    if string_char == " " {
-                        self.add_token(SPACE);
-                    } else if string_char == "\t" {
-                        self.add_token(TAB);
-                    }
+                let tmp_intend = self.check_intend(intend, string_char.clone());
+                intend = tmp_intend.0;
+                if tmp_intend.1 {
                     continue;
-                } else {
-                    if string_char == " " || string_char == "\t" {
-                        continue;
-                    }
                 }
                 // handling multi chars
                 // ensure whether checker has already checked successfully
                 if !self.checker.is_checked {
                     // if not, we have three match pattern, number,identifier(ignore current check char) and other
-                    match self.checker.check_for {
-                        CheckFor::Number => {
-                            if self.checker.current_check_char == "." && !('0'..'9').contains(&char)
-                            {
-                                self.checker.is_checked = true;
-                                self.recognize_token();
-                            } else {
-                                self.checker.current_check_char = String::from("");
-                                if ('0'..'9').contains(&char)
-                                    || (string_char == "."
-                                        && count_char_occurrences!(self.lexeme, '.') < 1)
-                                {
-                                    self.lexeme += string_char.as_str();
-                                    continue;
-                                } else {
-                                    self.checker.is_checked = true;
-                                    if self.lexeme.contains(".") {
-                                        let float: f64 =
-                                            format!("0{}", self.lexeme).parse::<f64>().unwrap();
-                                        self.add_token_with_literal(NUMBER, Literal::Float(float))
-                                    } else {
-                                        let int: isize =
-                                            format!("0{}", self.lexeme).parse::<isize>().unwrap();
-                                        self.add_token_with_literal(NUMBER, Literal::Int(int))
-                                    }
-                                }
-                            }
-                        }
-                        CheckFor::Identifier => {
-                            if ('a'..'z').contains(&char)
-                                || ('A'..'Z').contains(&char)
-                                || char == '_'
-                            {
-                                self.lexeme += string_char.as_str();
-                                continue;
-                            } else {
-                                if !self.recognize_keywords() {
-                                    self.add_token_with_literal(
-                                        IDENTIFIER,
-                                        Literal::Identifier(self.lexeme.clone()),
-                                    );
-                                }
-                                self.checker.is_checked = true
-                            }
-                        }
-                        _ => {
-                            /*
-                            if not number, we also have two patterns,string and normal.
-                            Normal is designed for checking operator(like <=).
-                            String is designed for string literal
-                            */
-                            if self.checker.current_check_char == string_char {
-                                self.lexeme += string_char.as_str();
-                                match self.checker.check_for {
-                                    CheckFor::String => {
-                                        //we all know that python has two string definition token, " " and """ """(multi lines)
-                                        // """ situation
-                                        if self.lexeme.starts_with("\"\"") && self.lexeme.len() == 2
-                                        {
-                                            continue;
-                                        } else if self.lexeme.starts_with("\"\"\"")
-                                            && self.lexeme.len() == 3
-                                        {
-                                            self.checker.check_method = CheckMethod::All;
-                                            continue;
-                                        }
-
-                                        match self.checker.check_method {
-                                            CheckMethod::All => {
-                                                if !self.lexeme.ends_with("\"\"\"") {
-                                                    continue;
-                                                }
-                                            }
-                                            _ => {}
-                                        }
-                                        // " situation
-                                        self.add_token_with_literal(
-                                            STRING,
-                                            Literal::String(String::from(strip_quotes!(
-                                                self.lexeme
-                                            ))),
-                                        );
-                                        self.checker.is_checked = true;
-                                    }
-                                    CheckFor::Normal => {
-                                        self.recognize_token();
-                                        self.checker.is_checked = true;
-                                    }
-                                    _ => {}
-                                }
-                                continue;
-                            } else {
-                                match self.checker.check_method {
-                                    CheckMethod::Next => {
-                                        self.checker.is_checked = true;
-                                        self.recognize_token();
-                                    }
-                                    _ => {
-                                        self.lexeme += string_char.as_str();
-                                        continue;
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    if self.check_for_all(&char, &string_char){continue}
                 }
                 self.lexeme = string_char;
                 self.col_offset = col_offset;
                 self.current_char = char.to_string();
-                match self.current_char.as_str() {
-                    "<" => {
-                        self.build_checker(String::from("="), CheckMethod::Next, CheckFor::Normal);
-                        continue;
+                let continued = self.build_checker_for_normal(&char);
+                if continued.0 {
+                    if continued.1 {
+                        continue 'line;
                     }
-                    "=" => {
-                        self.build_checker(String::from("="), CheckMethod::Next, CheckFor::Normal);
-                        continue;
-                    }
-                    "!" => {
-                        self.build_checker(String::from("="), CheckMethod::Next, CheckFor::Normal);
-                        continue;
-                    }
-                    ">" => {
-                        self.build_checker(String::from("="), CheckMethod::Next, CheckFor::Normal);
-                        continue;
-                    }
-                    "/" => {
-                        self.build_checker(String::from("/"), CheckMethod::Next, CheckFor::Normal);
-                        continue;
-                    }
-                    "#" => continue 'line,
-                    "\r" => continue,
-                    "\"" => {
-                        self.build_checker(
-                            String::from("\""),
-                            CheckMethod::InLine,
-                            CheckFor::String,
-                        );
-                        continue;
-                    }
-                    "." => {
-                        self.build_checker(
-                            String::from("."),
-                            CheckMethod::InLine,
-                            CheckFor::Number,
-                        );
-                        continue;
-                    }
-                    "*" => {
-                        self.build_checker(
-                            String::from("*"),
-                            CheckMethod::InLine,
-                            CheckFor::Number,
-                        );
-                        continue;
-                    }
-                    _ => {
-                        if ('0'..'9').contains(&char) {
-                            self.build_checker(
-                                String::from(""),
-                                CheckMethod::InLine,
-                                CheckFor::Number,
-                            );
-                            continue;
-                        } else if ('a'..'z').contains(&char)
-                            || ('A'..'Z').contains(&char)
-                            || char == '_'
-                        {
-                            self.build_checker(
-                                String::from(""),
-                                CheckMethod::InLine,
-                                CheckFor::Identifier,
-                            );
-                            continue;
-                        }
-                    }
+                    continue 'char;
                 }
                 self.recognize_token()
             }
@@ -374,34 +401,11 @@ impl Scanner {
         if !self.checker.is_checked {
             match self.checker.check_for {
                 CheckFor::String => {
-                    self.add_token_with_literal(
-                        STRING,
-                        Literal::String(String::from(strip_quotes!(
-                                                self.lexeme
-                                            ))),
-                    );
-                    self.checker.is_checked = true;
+                    self.add_for_string();
                 }
-                CheckFor::Number => {
-                    self.checker.is_checked = true;
-                    if self.lexeme.contains(".") {
-                        let float: f64 =
-                            format!("0{}", self.lexeme).parse::<f64>().unwrap();
-                        self.add_token_with_literal(NUMBER, Literal::Float(float))
-                    } else {
-                        let int: isize =
-                            format!("0{}", self.lexeme).parse::<isize>().unwrap();
-                        self.add_token_with_literal(NUMBER, Literal::Int(int))
-                    }
-                }
+                CheckFor::Number => self.add_for_number(),
                 CheckFor::Identifier => {
-                    if !self.recognize_keywords() {
-                        self.add_token_with_literal(
-                            IDENTIFIER,
-                            Literal::Identifier(self.lexeme.clone()),
-                        );
-                    }
-                    self.checker.is_checked = true
+                    self.add_for_identifier();
                 }
                 CheckFor::Normal => {
                     self.checker.is_checked = true;
@@ -418,32 +422,38 @@ impl Scanner {
         })
     }
     fn recognize_token(&mut self) {
-        match self.lexeme.as_str() {
-            "(" => self.add_token(LeftParen),
-            ")" => self.add_token(RightParen),
-            "{" => self.add_token(LeftBrace),
-            "}" => self.add_token(RightBrace),
-            "," => self.add_token(Comma),
-            "+" => self.add_token(Plus),
-            "-" => self.add_token(Minus),
-            "*" => self.add_token(Star),
-            "%" => self.add_token(Mod),
-            ";" => self.add_token(Semicolon),
-            "." => self.add_token(Dot),
-            ":" => self.add_token(COLON),
-            "<" => self.add_token(LESS),
-            "<=" => self.add_token(LessEqual),
-            "!" => self.add_token(BANG),
-            "!=" => self.add_token(BangEqual),
-            "=" => self.add_token(EQUAL),
-            "==" => self.add_token(EqualEqual),
-            ">" => self.add_token(GREATER),
-            ">=" => self.add_token(GreaterEqual),
-            "/" => self.add_token(Slash),
-            "//" => self.add_token(ExactDivision),
-            "**" => self.add_token(Pow),
-            _ => throw_error(self.lineno, self.col_offset, "Unexpected Character"),
-        }
+        let token_lists = vec![
+            ("(".to_string(), LeftParen),
+            (")".to_string(), RightBrace),
+            ("{".to_string(), LeftBrace),
+            ("}".to_string(), RightBrace),
+            (",".to_string(), Comma),
+            ("+".to_string(), Plus),
+            ("-".to_string(), Minus),
+            ("*".to_string(), Star),
+            ("%".to_string(), Mod),
+            (";".to_string(), Semicolon),
+            (".".to_string(), Dot),
+            (":".to_string(), COLON),
+            ("<".to_string(), LESS),
+            ("!".to_string(), BANG),
+            ("/".to_string(), Slash),
+            ("<=".to_string(), LessEqual),
+            ("!=".to_string(), BangEqual),
+            ("=".to_string(), EQUAL),
+            ("==".to_string(), EqualEqual),
+            (">".to_string(), GREATER),
+            (">=".to_string(), GreaterEqual),
+            ("//".to_string(), ExactDivision),
+            ("**".to_string(), Pow),
+        ];
+        let token_map: HashMap<String, TokenType> = token_lists.into_iter().collect();
+        match token_map.get(&self.lexeme.clone()) {
+            None => throw_error(self.lineno, self.col_offset, "Unexpected Character"),
+            Some(token) => {
+                self.add_token(token.clone());
+            }
+        };
     }
 
     fn recognize_keywords(&mut self) -> bool {

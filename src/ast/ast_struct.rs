@@ -15,7 +15,7 @@ pub enum Type {
     Name(Name),
     BinOp(Box<BinOp>),
     Compare(Compare),
-    UnaryOp(Box<UnaryOp>)
+    UnaryOp(Box<UnaryOp>),
 }
 #[derive(Debug)]
 pub struct Assign {
@@ -44,12 +44,12 @@ pub struct Constant {
     pub(crate) value: DataType,
     pub(crate) type_comment: String,
 }
-impl Constant{
-    pub(crate) fn new(value: DataType) -> Constant{
-        return Constant{
+impl Constant {
+    pub(crate) fn new(value: DataType) -> Constant {
+        return Constant {
             value,
             type_comment: "".to_string(),
-        }
+        };
     }
 }
 #[derive(Debug)]
@@ -69,7 +69,7 @@ pub enum Operator {
     LtE,
     GtE,
     Not,
-    USub
+    USub,
 }
 #[derive(Debug)]
 pub struct BinOp {
