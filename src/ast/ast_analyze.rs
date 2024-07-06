@@ -1,13 +1,11 @@
 use std::error::Error;
-use std::fmt::Error as OtherError;
+
 use crate::ast::ast_struct::{
-    ASTNode, BinOp, Compare, Constant, DataType, Operator, Type, UnaryOp,
+    ASTNode, BinOp, Compare, Constant, DataType, Operator, Type, UnaryOp, BoolOp
 };
-use crate::ast::scanner::TokenType::{
-    BangEqual, EqualEqual, GreaterEqual, LeftParen, LessEqual, Minus, Plus, Slash, Star, EOF,
-    GREATER, LESS, NOT,
-};
+use crate::ast::ast_struct::Operator::Not;
 use crate::ast::scanner::{Literal, Scanner, Token, TokenType};
+use crate::ast::scanner::TokenType::{AND, BangEqual, EOF, EqualEqual, GREATER, GreaterEqual, In, Is, LeftParen, LESS, LessEqual, Minus, NOT, OR, Plus, Slash, Star};
 
 #[derive(Debug)]
 pub struct TokenIter {
@@ -32,13 +30,22 @@ impl TokenIter {
         if !self.is_at_end() {
             self.current += 1;
         }
-        self.previous()
+        self.previous(1)
     }
-    fn previous(&self) -> Token {
-        self.vec_token[self.current - 1].clone()
+    fn previous(&self, offset: usize) -> Token {
+        self.vec_token[self.current - offset].clone()
     }
     fn peek(&self) -> Token {
         self.vec_token[self.current].clone()
+    }
+    fn back(&mut self, offset: usize) -> Result<Token, bool> {
+        match self.vec_token.get(self.current - offset) {
+            None => Err(false),
+            Some(i) => {
+                self.current -= offset;
+                Ok(i.clone())
+            }
+        }
     }
     fn check(&self, token_type: TokenType) -> bool {
         if self.is_at_end() {
@@ -56,16 +63,38 @@ impl TokenIter {
         }
         false
     }
-    fn consume(&mut self, token_type: TokenType, err: String) -> Token {
-        if self.check(token_type) {
-            return self.advance();
+    fn catch_multi<
+        T: IntoIterator<Item = U>,
+        U: IntoIterator<Item = TokenType> + std::marker::Copy,
+    >(
+        &mut self,
+        token_lists: T,
+    ) -> bool {
+        for tokens in token_lists {
+            let mut confirms = vec![false; tokens.into_iter().count()];
+            for (index, item) in tokens.into_iter().enumerate() {
+                if self.check(item) {
+                    confirms[index] = true;
+                }
+                self.advance();
+            }
+            if confirms.iter().filter(|&&x| x == true).count() == confirms.len() {
+                return true;
+            } else {
+                self.back(confirms.len()).unwrap();
+            }
         }
-        panic!(
-            "[{},{}] {}",
+        false
+    }
+    fn consume(&mut self, token_type: TokenType, err: String) -> Result<Token, String> {
+        if self.check(token_type) {
+            return Ok(self.advance());
+        }
+        Err(format!(
+            "[{}:{}]",
             self.peek().lineno + 1,
-            self.peek().col_offset + 1,
-            self.peek().lexeme
-        )
+            self.peek().col_offset + 1
+        ))
     }
 }
 #[derive(Debug)]
@@ -104,25 +133,27 @@ impl Parser {
             .token_iter
             .catch([TokenType::STRING, TokenType::NUMBER])
         {
-            return Ok(Type::Constant(Constant::new(match self.token_iter.previous().literal {
-                Literal::String(str) => DataType::String(str),
-                Literal::Float(float) => DataType::Float(float),
-                Literal::Int(int) => DataType::Int(int),
-                _ => DataType::Int(0),
-            })));
+            return Ok(Type::Constant(Constant::new(
+                match self.token_iter.previous(1).literal {
+                    Literal::String(str) => DataType::String(str),
+                    Literal::Float(float) => DataType::Float(float),
+                    Literal::Int(int) => DataType::Int(int),
+                    _ => DataType::Int(0),
+                },
+            )));
         }
         if self.token_iter.catch([LeftParen]) {
             let expr = self.expression();
             self.token_iter
-                .consume(TokenType::RightBrace, "".to_string());
+                .consume(TokenType::RightBrace, "".to_string())?;
             return Ok(expr);
         }
         Err(std::fmt::Error.into())
     }
     fn unary(&mut self) -> Result<Type, Box<dyn Error>> {
         if self.token_iter.catch([NOT, Minus, Plus]) {
-            let token = match self.token_iter.previous().token_type {
-                NOT => Operator::Not,
+            let token = match self.token_iter.previous(1).token_type {
+                NOT => Not,
                 Plus => Operator::UAdd,
                 _ => Operator::USub,
             };
@@ -138,7 +169,7 @@ impl Parser {
     fn factor(&mut self) -> Result<Type, Box<dyn Error>> {
         let expr: Type = self.unary()?;
         while self.token_iter.catch([Star, Slash]) {
-            let token = match self.token_iter.previous().token_type {
+            let token = match self.token_iter.previous(1).token_type {
                 Star => Operator::Mult,
                 _ => Operator::Div,
             };
@@ -154,7 +185,7 @@ impl Parser {
     fn term(&mut self) -> Result<Type, Box<dyn std::error::Error>> {
         let expr: Type = self.factor()?;
         while self.token_iter.catch([Minus, Plus]) {
-            let token = match self.token_iter.previous().token_type {
+            let token = match self.token_iter.previous(1).token_type {
                 Minus => Operator::Sub,
                 _ => Operator::Add,
             };
@@ -167,52 +198,44 @@ impl Parser {
         }
         Ok(expr)
     }
-    /*
     fn comparison(&mut self) -> Result<Type, Box<dyn std::error::Error>> {
         let expr: Type = self.term()?;
-        while self
-            .token_iter
-            .catch([GreaterEqual, LessEqual, LESS, GREATER])
+        while self.token_iter.catch([
+            BangEqual,
+            EqualEqual,
+            GreaterEqual,
+            LessEqual,
+            LESS,
+            GREATER,
+        ]) || self.token_iter.catch_multi([[NOT, In], [Is, NOT]])
         {
-            let token = match self.token_iter.previous().token_type {
-                GreaterEqual => Operator::GtE,
-                LessEqual => Operator::LtE,
-                LESS => Operator::Lt,
-                _ => Operator::Gt,
-            };
-            let comparators = self.comparison()?;
-            return Ok(Type::Compare(Compare {
-                left: Box::new(expr),
-                ops: vec![token],
-                comparators: Box::new(vec![comparators]),
-            }));
-        }
-        Ok(expr)
-    }
-     */
-    fn comparison(&mut self) -> Result<Type, Box<dyn std::error::Error>> {
-        let expr: Type = self.term()?;
-        while self.token_iter.catch([BangEqual, EqualEqual, GreaterEqual, LessEqual, LESS, GREATER]) {
-            let token = match self.token_iter.previous().token_type {
+            let token = match self.token_iter.previous(1).token_type {
                 BangEqual => Operator::NotEq,
                 EqualEqual => Operator::Eq,
                 GreaterEqual => Operator::GtE,
                 LessEqual => Operator::LtE,
                 LESS => Operator::Lt,
+                In => {
+                    if self.token_iter.previous(2).token_type != NOT {
+                        Operator::In
+                    } else {
+                        Operator::NotIn
+                    }
+                }
+                Is => Operator::Is,
+                NOT => Operator::IsNot,
                 _ => Operator::Gt,
             };
             let comparator = self.comparison()?;
-            let mut comparators:Vec<Type>= vec![];
-            let mut ops:Vec<Operator> = vec![token];
+            let mut comparators: Vec<Type> = vec![];
+            let mut ops: Vec<Operator> = vec![token];
             match comparator {
-                Type::Compare(compare) =>{
+                Type::Compare(compare) => {
                     comparators.push(*compare.left);
                     comparators.extend(compare.comparators.into_iter().clone());
                     ops.extend(compare.ops.into_iter().clone())
                 }
-                _ => {
-                    comparators.push(comparator)
-                }
+                _ => comparators.push(comparator),
             }
             return Ok(Type::Compare(Compare {
                 left: Box::new(expr),
@@ -222,14 +245,43 @@ impl Parser {
         }
         Ok(expr)
     }
-    fn expression(&mut self) -> Type {
-        match self.comparison() {
-            Ok(expr) => {
-                return expr
+    fn bool_operate(&mut self) -> Result<Type, Box<dyn std::error::Error>> {
+        let expr = self.comparison()?;
+        while self.token_iter.catch([AND,OR]) {
+            let operator = match self.token_iter.previous(1).token_type {
+                AND => Operator::And,
+                _ => Operator::Or
+            };
+            let mut values:Vec<Type> = vec![expr];
+            let value = self.bool_operate()?;
+            match value {
+                Type::BoolOp(v) => {
+                    values.extend(v.values.into_iter().clone())
+                }
+                _ => {
+                    values.push(value)
+                }
             }
-            Err(_) => {
-                panic!("{:?}", self.token_iter.peek())
+            return Ok(Type::BoolOp(BoolOp{
+                op: operator,
+                values: Box::new(values),
+            }))
+        }
+        Ok(expr)
+    }
+    fn expression(&mut self) -> Type {
+        match self.bool_operate() {
+            Ok(expr) => return expr,
+            Err(e) => {
+                panic!("{:?}", e)
             }
         }
+    }
+    fn synchronize(&mut self) -> bool {
+        self.token_iter.advance();
+        while !self.token_iter.is_at_end() {
+            return true;
+        }
+        false
     }
 }

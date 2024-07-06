@@ -1,6 +1,6 @@
 use crate::ast::ast_struct::ASTNode;
 use crate::ast::scanner::TokenType::{
-    BangEqual, Comma, Dot, EqualEqual, ExactDivision, GreaterEqual, LeftBrace, LeftParen,
+    BangEqual, Comma, Dot, EqualEqual, ExactDivision, GreaterEqual, In, Is, LeftBrace, LeftParen,
     LessEqual, Minus, Mod, Plus, Pow, RightBrace, RightParen, Semicolon, Slash, Star, AND, BANG,
     CLASS, COLON, DEF, ELSE, EQUAL, FALSE, FOR, GREATER, IDENTIFIER, IF, LAMBDA, LESS, NOT, NUMBER,
     OR, RETURN, SPACE, STRING, TAB, TRUE, WHILE,
@@ -9,7 +9,7 @@ use crate::{count_char_occurrences, strip_quotes};
 use clap::builder::Str;
 use std::collections::HashMap;
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum TokenType {
     // Single-character tokens.
     LeftParen,
@@ -36,6 +36,8 @@ pub enum TokenType {
     GreaterEqual,
     LESS,
     LessEqual,
+    Is,
+    In,
 
     // Literals.
     IDENTIFIER,
@@ -55,7 +57,6 @@ pub enum TokenType {
     TRUE,
     WHILE,
     DEF,
-    IN,
     LAMBDA,
     NOT,
 
@@ -268,7 +269,7 @@ impl Scanner {
         }
         false
     }
-    fn check_for_all(&mut self, char:&char, string_char: &String) -> bool{
+    fn check_for_all(&mut self, char: &char, string_char: &String) -> bool {
         match self.checker.check_for {
             CheckFor::Number => {
                 if self.check_for_number(&char, string_char.clone()) {
@@ -377,7 +378,9 @@ impl Scanner {
                 // ensure whether checker has already checked successfully
                 if !self.checker.is_checked {
                     // if not, we have three match pattern, number,identifier(ignore current check char) and other
-                    if self.check_for_all(&char, &string_char){continue}
+                    if self.check_for_all(&char, &string_char) {
+                        continue;
+                    }
                 }
                 // Handling indentation in string
                 let tmp_intend = self.check_intend(intend, string_char.clone());
@@ -471,6 +474,10 @@ impl Scanner {
             ("true".to_string(), TRUE),
             ("while".to_string(), WHILE),
             ("not".to_string(), NOT),
+            ("is".to_string(), Is),
+            ("in".to_string(), In),
+            ("and".to_string(), AND),
+            ("or".to_string(), OR),
         ];
         let keywords_map: HashMap<String, TokenType> = keyword_list.into_iter().collect();
         return match keywords_map.get(&self.lexeme.clone()) {

@@ -12,7 +12,7 @@ fn test_scanner() {
 
 #[test]
 fn test_parser() {
-    let source = String::from("1+3*(3-2)==677");
+    let source = String::from("1 is not 2 and 2 is not 1");
     let mut scanner = build_scanner(source);
     scanner.scan();
     let mut parser = build_parser(scanner);

@@ -16,6 +16,7 @@ pub enum Type {
     BinOp(BinOp),
     Compare(Compare),
     UnaryOp(UnaryOp),
+    BoolOp(BoolOp),
 }
 #[derive(Debug, Clone)]
 pub struct Assign {
@@ -71,6 +72,12 @@ pub enum Operator {
     Not,
     UAdd,
     USub,
+    In,
+    NotIn,
+    Is,
+    IsNot,
+    And,
+    Or,
 }
 #[derive(Debug, Clone)]
 pub struct BinOp {
@@ -79,14 +86,20 @@ pub struct BinOp {
     pub right: Box<Type>,
 }
 #[derive(Debug, Clone)]
-pub struct Compare{
+pub struct Compare {
     pub(crate) left: Box<Type>,
     pub(crate) ops: Vec<Operator>,
-    pub(crate) comparators:Box<Vec<Type>>,
+    pub(crate) comparators: Box<Vec<Type>>,
 }
 
 #[derive(Debug, Clone)]
 pub struct UnaryOp {
     pub op: Operator,
     pub operand: Box<Type>,
+}
+
+#[derive(Debug, Clone)]
+pub struct BoolOp {
+    pub op: Operator,
+    pub values: Box<Vec<Type>>,
 }
