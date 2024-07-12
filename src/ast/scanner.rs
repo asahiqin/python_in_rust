@@ -70,7 +70,7 @@ pub enum TokenType {
 pub enum Literal {
     String(String),
     Float(f64),
-    Int(isize),
+    Int(i64),
     Identifier(String),
     #[default]
     None,
@@ -163,7 +163,7 @@ impl Scanner {
             let float: f64 = format!("0{}", self.lexeme).parse::<f64>().unwrap();
             self.add_token_with_literal(NUMBER, Literal::Float(float))
         } else {
-            let int: isize = format!("0{}", self.lexeme).parse::<isize>().unwrap();
+            let int: i64 = format!("0{}", self.lexeme).parse::<i64>().unwrap();
             self.add_token_with_literal(NUMBER, Literal::Int(int))
         }
     }
@@ -464,14 +464,14 @@ impl Scanner {
             ("and".to_string(), AND),
             ("class".to_string(), CLASS),
             ("else".to_string(), ELSE),
-            ("false".to_string(), FALSE),
+            ("False".to_string(), FALSE),
             ("for".to_string(), FOR),
             ("def".to_string(), DEF),
             ("if".to_string(), IF),
             ("lambda".to_string(), LAMBDA),
             ("or".to_string(), OR),
             ("return".to_string(), RETURN),
-            ("true".to_string(), TRUE),
+            ("True".to_string(), TRUE),
             ("while".to_string(), WHILE),
             ("not".to_string(), NOT),
             ("is".to_string(), Is),

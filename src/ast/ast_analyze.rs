@@ -1,11 +1,14 @@
 use std::error::Error;
 
-use crate::ast::ast_struct::{
-    ASTNode, BinOp, Compare, Constant, DataType, Operator, Type, UnaryOp, BoolOp
-};
 use crate::ast::ast_struct::Operator::Not;
+use crate::ast::ast_struct::{
+    ASTNode, BinOp, BoolOp, Compare, Constant, DataType, Operator, Type, UnaryOp,
+};
+use crate::ast::scanner::TokenType::{
+    BangEqual, EqualEqual, GreaterEqual, In, Is, LeftParen, LessEqual, Minus, Plus, Slash, Star,
+    AND, EOF, GREATER, LESS, NOT, OR,
+};
 use crate::ast::scanner::{Literal, Scanner, Token, TokenType};
-use crate::ast::scanner::TokenType::{AND, BangEqual, EOF, EqualEqual, GREATER, GreaterEqual, In, Is, LeftParen, LESS, LessEqual, Minus, NOT, OR, Plus, Slash, Star};
 
 #[derive(Debug)]
 pub struct TokenIter {
@@ -247,25 +250,21 @@ impl Parser {
     }
     fn bool_operate(&mut self) -> Result<Type, Box<dyn std::error::Error>> {
         let expr = self.comparison()?;
-        while self.token_iter.catch([AND,OR]) {
+        while self.token_iter.catch([AND, OR]) {
             let operator = match self.token_iter.previous(1).token_type {
                 AND => Operator::And,
-                _ => Operator::Or
+                _ => Operator::Or,
             };
-            let mut values:Vec<Type> = vec![expr];
+            let mut values: Vec<Type> = vec![expr];
             let value = self.bool_operate()?;
             match value {
-                Type::BoolOp(v) => {
-                    values.extend(v.values.into_iter().clone())
-                }
-                _ => {
-                    values.push(value)
-                }
+                Type::BoolOp(v) => values.extend(v.values.into_iter().clone()),
+                _ => values.push(value),
             }
-            return Ok(Type::BoolOp(BoolOp{
+            return Ok(Type::BoolOp(BoolOp {
                 op: operator,
                 values: Box::new(values),
-            }))
+            }));
         }
         Ok(expr)
     }

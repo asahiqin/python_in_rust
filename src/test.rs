@@ -1,6 +1,6 @@
 use crate::ast::ast_analyze::build_parser;
+use crate::ast::ast_struct::{BinOp, Calc, Constant, DataType, Operator, Type};
 use crate::ast::scanner::build_scanner;
-use crate::strip_quotes;
 
 #[test]
 fn test_scanner() {
@@ -9,7 +9,28 @@ fn test_scanner() {
     scanner.scan();
     println!("{:?}", scanner.token);
 }
-
+#[test]
+fn test_rust() {
+    let mut op = BinOp {
+        left: Box::new(Type::Constant(Constant {
+            value: DataType::Int(1),
+            type_comment: "".to_string(),
+        })),
+        op: Operator::Add,
+        right: Box::new(Type::BinOp(BinOp{
+            left: Box::new(Type::Constant(Constant {
+                value: DataType::Int(3),
+                type_comment: "".to_string(),
+            })),
+            op: Operator::Mult,
+            right: Box::new(Type::Constant(Constant {
+                value: DataType::Int(2),
+                type_comment: "".to_string(),
+            })),
+        })),
+    };
+    println!("{:?}", op.calc());
+}
 #[test]
 fn test_parser() {
     let source = String::from("1 is not 2 and 2 is not 1");
