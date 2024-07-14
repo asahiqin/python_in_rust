@@ -90,6 +90,8 @@ impl TokenIter {
         false
     }
     fn consume(&mut self, token_type: TokenType, err: String) -> Result<Token, String> {
+        println!("{:?}", self.peek());
+        self.advance();
         if self.check(token_type) {
             return Ok(self.advance());
         }
@@ -122,8 +124,9 @@ pub(crate) fn build_parser(scanner: Scanner) -> Parser {
     };
 }
 impl Parser {
-    pub fn parser(&mut self) {
-        println!("{:?}", self.expression())
+    pub fn parser(&mut self) -> Type {
+        println!("{:?}", self.expression());
+        return self.expression()
     }
     fn primary(&mut self) -> Result<Type, Box<dyn Error>> {
         if self.token_iter.catch([TokenType::TRUE]) {
@@ -148,7 +151,7 @@ impl Parser {
         if self.token_iter.catch([LeftParen]) {
             let expr = self.expression();
             self.token_iter
-                .consume(TokenType::RightBrace, "".to_string())?;
+                .consume(TokenType::RightParen, "".to_string())?;
             return Ok(expr);
         }
         Err(std::fmt::Error.into())

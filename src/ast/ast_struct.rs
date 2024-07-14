@@ -166,53 +166,35 @@ pub struct BinOp {
     pub op: Operator,
     pub right: Box<Type>,
 }
-
+fn deref_expression(data: Type) -> Constant {
+    let mut _x:Constant;
+    match data {
+        Type::Constant(x) => {
+            _x = x.clone();
+        }
+        Type::Name(_) => {
+            todo!()
+        }
+        Type::BinOp(ref x) => {
+            _x = x.clone().calc();
+        }
+        Type::Compare(ref x) => {
+            _x = x.clone().calc();
+        }
+        Type::UnaryOp(ref x) => {
+            _x = x.clone().calc();
+        }
+        Type::BoolOp(ref x) => {
+            _x = x.clone().calc();
+        }
+        _ => panic!("Error at calc"),
+    }
+    _x
+}
 impl Calc for BinOp {
     fn calc(&mut self) -> Constant {
-        let mut _x: Constant;
-        match &*self.left {
-            Type::Constant(x) => {
-                _x = x.clone();
-            }
-            Type::Name(_) => {
-                todo!()
-            }
-            Type::BinOp(ref x) => {
-                _x = x.clone().calc();
-            }
-            Type::Compare(ref x) => {
-                _x = x.clone().calc();
-            }
-            Type::UnaryOp(ref x) => {
-                _x = x.clone().calc();
-            }
-            Type::BoolOp(ref x) => {
-                _x = x.clone().calc();
-            }
-            _ => panic!("Error at calc"),
-        }
-        let mut _y: Constant;
-        match &*self.right {
-            Type::Constant(x) => {
-                _y = x.clone();
-            }
-            Type::Name(_) => {
-                todo!()
-            }
-            Type::BinOp(ref x) => {
-                _y = x.clone().calc();
-            }
-            Type::Compare(ref x) => {
-                _y = x.clone().calc();
-            }
-            Type::UnaryOp(ref x) => {
-                _y = x.clone().calc();
-            }
-            Type::BoolOp(ref x) => {
-                _y = x.clone().calc();
-            }
-            _ => panic!("Error at calc"),
-        }
+        let _x: Constant=deref_expression(*self.left.clone()).clone();
+        let mut _y: Constant = deref_expression(*self.right.clone()).clone();
         println!("{:?} {:?} {:?}", _x, _y, self.op.clone());
         generate_op_fn!(self.op.clone())(_x, _y)
     }
@@ -238,7 +220,79 @@ pub struct UnaryOp {
 
 impl Calc for UnaryOp {
     fn calc(&mut self) -> Constant {
-        todo!()
+        let _x:Constant = deref_expression(*self.operand.clone()).clone();
+        match self.op {
+            Operator::UAdd => {
+                return match _x.value {
+                    DataType::Bool(x) => {
+                        Constant {
+                            value: DataType::Bool(x),
+                            type_comment: "".to_string(),
+                        }
+                    }
+                    DataType::Int(x) => {
+                        Constant {
+                            value: DataType::Int(x),
+                            type_comment: "".to_string(),
+                        }
+                    }
+                    DataType::Float(x) => {
+                        Constant {
+                            value: DataType::Float(x),
+                            type_comment: "".to_string(),
+                        }
+                    }
+                    _ => panic!("Unsupported operate")
+                }
+            },
+            Operator::USub => {
+                return match _x.value {
+                    DataType::Bool(x) => {
+                        Constant {
+                            value: DataType::Int(if x { -1 } else { 0 }),
+                            type_comment: "".to_string(),
+                        }
+                    }
+                    DataType::Int(x) => {
+                        Constant {
+                            value: DataType::Int(-x),
+                            type_comment: "".to_string(),
+                        }
+                    }
+                    DataType::Float(x) => {
+                        Constant {
+                            value: DataType::Float(-x),
+                            type_comment: "".to_string(),
+                        }
+                    }
+                    _ => panic!("Unsupported operate")
+                }
+            },
+            Operator::Not => {
+                return match _x.value {
+                    DataType::Bool(x) => {
+                        Constant {
+                            value: DataType::Bool(!x),
+                            type_comment: "".to_string(),
+                        }
+                    }
+                    DataType::Int(x) => {
+                        Constant {
+                            value: DataType::Bool(if x!=0 { true } else { false }),
+                            type_comment: "".to_string(),
+                        }
+                    }
+                    DataType::Float(x) => {
+                        Constant {
+                            value: DataType::Bool(if x!=0.0 { true } else { false }),
+                            type_comment: "".to_string(),
+                        }
+                    }
+                    _ => panic!("Unsupported operate")
+                }
+            }
+            _ => panic!("Unsupported operator")
+        }
     }
 }
 

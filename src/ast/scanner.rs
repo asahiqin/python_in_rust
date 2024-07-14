@@ -427,7 +427,7 @@ impl Scanner {
     fn recognize_token(&mut self) {
         let token_lists = vec![
             ("(".to_string(), LeftParen),
-            (")".to_string(), RightBrace),
+            (")".to_string(), RightParen),
             ("{".to_string(), LeftBrace),
             ("}".to_string(), RightBrace),
             (",".to_string(), Comma),
