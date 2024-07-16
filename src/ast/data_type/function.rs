@@ -1,46 +1,57 @@
 use std::collections::HashMap;
+use std::fmt::Debug;
 
-use crate::ast::data_type::class::Class;
+// use crate::ast::data_type::class::Class;
 
-#[derive(Debug,Clone)]
-enum PyRecommendType<T>
-where T: Fn(HashMap<String, Class<T>>) -> Class<T>{
+
+
+/*
+#[derive(Clone)]
+pub enum PyRecommendType<T>
+    where T:Fn(HashMap<String, PyRecommendType<T>>) -> Box<PyRecommendType<T>>
+{
     None,
-    Class(Box<Class<T>>)
+    Class(Class<T>)
+}
+#[derive(Clone)]
+pub enum PyRustFunction<T>
+    where T:Fn(HashMap<String, PyRecommendType<T>>) -> Box<PyRecommendType<T>>
+{
+    None,
+    Def(T)
 }
 
-#[derive(Debug,Clone)]
+#[derive(Clone)]
 pub struct Function<T>
-where T: Fn(HashMap<String, Class<T>>) -> Box<Class<T>>
+where T:Fn(HashMap<String, PyRecommendType<T>>) -> Box<PyRecommendType<T>>
 {
     pub args: HashMap<String,PyRecommendType<T>>,
-    recommend_result_type: PyRecommendType<T>,
-    def: T
+    pub recommend_result_type: Box<PyRecommendType<T>>,
+    pub def: PyRustFunction<T>
 }
 
-impl<T> Default for Function<T>
-where T: Fn(HashMap<String, Class<T>>) -> Box<Class<T>>{
-    fn default() -> Self {
-        fn not_impl(x: HashMap<String, Class<T>>) -> Box<Class<T>>
-        {
-            panic!("not impl")
-        }
-        Function{
-            args: vec![].into_iter().collect(),
-            recommend_result_type: PyRecommendType::None,
-            def: not_impl,
-        }
-    }
-}
 impl<T> Function<T>
-where T: Fn(HashMap<String, Class<T>>) -> Box<Class<T>> {
-    fn args<U>(&self, args: U) -> Function<T>
+    where T:Fn(HashMap<String, PyRecommendType<T>>) -> Box<PyRecommendType<T>>
+{
+    pub(crate) fn default() -> Box<Function<T>>
+    {
+
+        let args:HashMap<String,PyRecommendType<T>> = vec![].into_iter().collect();
+        Box::from(Function{
+            args,
+            recommend_result_type:Box::from(PyRecommendType::None),
+            def: PyRustFunction::None
+        })
+    }
+    pub(crate) fn build<U>(args: U, recommend_result_type:Box<PyRecommendType<T>>, def: T) -> Box<Function<T>>
     where U: IntoIterator<Item = (String,PyRecommendType<T>)>
     {
         let args:HashMap<String,PyRecommendType<T>> = args.into_iter().collect();
-        Function{
+        Box::from(Function{
             args,
-            ..self.clone()
-        }
+            recommend_result_type,
+            def: PyRustFunction::Def(def)
+        })
     }
 }
+*/
