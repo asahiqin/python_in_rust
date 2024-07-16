@@ -17,6 +17,38 @@ pub enum Type {
     Compare(Compare),
     UnaryOp(UnaryOp),
     BoolOp(BoolOp),
+    None
+}
+impl Type{
+    pub fn exec_self(&self) -> Type{
+        match self.clone() {
+            Type::Assign(x) => {
+                todo!();
+                return Type::None
+            }
+            Type::Constant(x) => {
+                return Type::Constant(x.clone())
+            }
+            Type::Name(x) => {
+                todo!()
+            }
+            Type::BinOp(mut x) => {
+                return Type::Constant(x.exec())
+            }
+            Type::Compare(mut x) => {
+                return Type::Constant(x.exec())
+            }
+            Type::UnaryOp(mut x) => {
+                return Type::Constant(x.exec())
+            }
+            Type::BoolOp(mut x) => {
+                return Type::Constant(x.exec())
+            }
+            _ => {
+                panic!("Error to exec")
+            }
+        }
+    }
 }
 #[derive(Debug, Clone)]
 pub struct Assign {
@@ -30,7 +62,7 @@ pub struct Name {
     pub(crate) value: Constant,
     pub(crate) type_comment: String,
 }
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub enum DataType {
     Int(i64),
     Float(f64),
@@ -157,8 +189,8 @@ macro_rules! generate_op_fn {
     }};
 }
 
-pub trait Calc {
-    fn calc(&mut self) -> Constant;
+pub trait BeAbleToRun {
+    fn exec(&mut self) -> Constant;
 }
 #[derive(Debug, Clone)]
 pub struct BinOp {
@@ -176,26 +208,26 @@ fn deref_expression(data: Type) -> Constant {
             todo!()
         }
         Type::BinOp(ref x) => {
-            _x = x.clone().calc();
+            _x = x.clone().exec();
         }
         Type::Compare(ref x) => {
-            _x = x.clone().calc();
+            _x = x.clone().exec();
         }
         Type::UnaryOp(ref x) => {
-            _x = x.clone().calc();
+            _x = x.clone().exec();
         }
         Type::BoolOp(ref x) => {
-            _x = x.clone().calc();
+            _x = x.clone().exec();
         }
         _ => panic!("Error at calc"),
     }
     _x
 }
-impl Calc for BinOp {
-    fn calc(&mut self) -> Constant {
+impl BeAbleToRun for BinOp {
+    fn exec(&mut self) -> Constant {
         let _x: Constant=deref_expression(*self.left.clone()).clone();
-        let mut _y: Constant = deref_expression(*self.right.clone()).clone();
-        println!("{:?} {:?} {:?}", _x, _y, self.op.clone());
+        let _y: Constant = deref_expression(*self.right.clone()).clone();
+        // println!("{:?} {:?} {:?}", _x, _y, self.op);
         generate_op_fn!(self.op.clone())(_x, _y)
     }
 }
@@ -203,12 +235,46 @@ impl Calc for BinOp {
 pub struct Compare {
     pub(crate) left: Box<Type>,
     pub(crate) ops: Vec<Operator>,
-    pub(crate) comparators: Box<Vec<Type>>,
+    pub(crate) comparators: Vec<Box<Type>>,
 }
 
-impl Calc for Compare {
-    fn calc(&mut self) -> Constant {
-        todo!()
+impl BeAbleToRun for Compare {
+    fn exec(&mut self) -> Constant {
+        let mut list = vec![self.left.clone()];
+        list.append(&mut self.comparators);
+        let bools = vec![false; list.len()-1];
+        for (index,item) in list.iter().enumerate() {
+            match list.get(index+1) {
+                None => {
+                    break
+                }
+                Some(x) => {
+                    let left = deref_expression(*item.clone());
+                    let comparator = deref_expression(*x.clone());
+                    match left.value {
+                        DataType::Int(_) => {}
+                        DataType::Float(_) => {}
+                        DataType::Bool(_) => {}
+                        DataType::String(_) => {}
+                        DataType::List(_) => {}
+                        DataType::None => {
+                            panic!("Cannot Compare")
+                        }
+                    }
+                }
+            }
+        }
+        if bools.iter().filter(|&&x| x == true).count() == bools.len() {
+            return Constant{
+                value: DataType::Bool(true),
+                type_comment: "".to_string(),
+            };
+        } else {
+            return Constant{
+                value: DataType::Bool(false),
+                type_comment: "".to_string(),
+            };
+        }
     }
 }
 
@@ -218,8 +284,8 @@ pub struct UnaryOp {
     pub operand: Box<Type>,
 }
 
-impl Calc for UnaryOp {
-    fn calc(&mut self) -> Constant {
+impl BeAbleToRun for UnaryOp {
+    fn exec(&mut self) -> Constant {
         let _x:Constant = deref_expression(*self.operand.clone()).clone();
         match self.op {
             Operator::UAdd => {
@@ -302,8 +368,8 @@ pub struct BoolOp {
     pub values: Box<Vec<Type>>,
 }
 
-impl Calc for BoolOp {
-    fn calc(&mut self) -> Constant {
+impl BeAbleToRun for BoolOp {
+    fn exec(&mut self) -> Constant {
         todo!()
     }
 }

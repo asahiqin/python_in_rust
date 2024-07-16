@@ -22,7 +22,7 @@ impl DataType {
         match rhs {
             DataType::Int(y) => DataType::Int(generate_op_fn!(operator)(x, y)),
             DataType::Float(y) => DataType::Float(generate_op_fn!(operator)(x as f64, y)),
-            DataType::Bool(y) => DataType::Int(generate_op_fn!(operator)(x, rhs.bool_to_int())),
+            DataType::Bool(_) => DataType::Int(generate_op_fn!(operator)(x, rhs.bool_to_int())),
             _ => panic!("Unsupported Calc"),
         }
     }
@@ -30,7 +30,7 @@ impl DataType {
         match rhs {
             DataType::Int(y) => DataType::Float(generate_op_fn!(operator)(x, y as f64)),
             DataType::Float(y) => DataType::Float(generate_op_fn!(operator)(x, y)),
-            DataType::Bool(y) => {
+            DataType::Bool(_) => {
                 DataType::Float(generate_op_fn!(operator)(x, rhs.bool_to_int() as f64))
             }
             _ => panic!("Unsupported Calc"),
@@ -45,7 +45,7 @@ impl Add for DataType {
         match self {
             DataType::Int(x) => DataType::calc_int(rhs, x, op),
             DataType::Float(x) => DataType::calc_float(rhs, x, op),
-            DataType::Bool(x) => {
+            DataType::Bool(_) => {
                 let _x = self.bool_to_int();
                 DataType::calc_int(rhs, _x, op)
             }
@@ -76,7 +76,7 @@ impl Sub for DataType {
         match self {
             DataType::Int(x) => DataType::calc_int(rhs, x, op),
             DataType::Float(x) => DataType::calc_float(rhs, x, op),
-            DataType::Bool(x) => {
+            DataType::Bool(_) => {
                 let _x = self.bool_to_int();
                 DataType::calc_int(rhs, _x, op)
             }
@@ -95,7 +95,7 @@ impl Mul for DataType {
         match self {
             DataType::Int(x) => DataType::calc_int(rhs, x, op),
             DataType::Float(x) => DataType::calc_float(rhs, x, op),
-            DataType::Bool(x) => {
+            DataType::Bool(_) => {
                 let _x = self.bool_to_int();
                 DataType::calc_int(rhs, _x, op)
             }
@@ -103,7 +103,7 @@ impl Mul for DataType {
                 let mut _x = x.clone();
                 match rhs {
                     DataType::Int(y) => {
-                        for i in 0..y - 1 {
+                        for _i in 0..y - 1 {
                             _x.append(&mut x.clone())
                         }
                         DataType::List(_x)
@@ -129,12 +129,86 @@ impl Div for DataType {
                 DataType::calc_float(rhs, x as f64, op)
             }
             DataType::Float(x) => DataType::calc_float(rhs, x, op),
-            DataType::Bool(x) => {
+            DataType::Bool(_) => {
                 let _x = self.bool_to_int();
                 DataType::calc_int(rhs, _x, op)
             }
             _ => {
                 panic!("Unsupported Calc")
+            }
+        }
+    }
+}
+impl DataType {
+    fn compare_int_float(x:DataType ,y:DataType , operator: Operator) -> bool{
+        match x {
+            DataType::Int(_x) => {
+                match y {
+                    DataType::Int(_y) => {
+                        todo!()
+                        //generate_op_fn!(operator)(_x,_y)
+                    }
+                    DataType::Float(_y) => {
+                        _x.clone() as f64 == _y.clone()
+                    }
+                    DataType::Bool(y) => {
+                        if y {
+                            _x.clone() == 1
+                        }else{
+                            _x.clone() == 0
+                        }
+                    }
+                    _ => panic!("Cannot compare")
+                }
+            }
+            DataType::Float(_) => {todo!()}
+            _ => { panic!("Unsupported Operate ")}
+        }
+    }
+}
+impl PartialEq for DataType {
+    fn eq(&self, other: &Self) -> bool {
+        match self {
+            DataType::Int(x) => {
+                match other {
+                    DataType::Int(y) => {
+                        x == y
+                    }
+                    DataType::Float(y) => {
+                        *x as f64 == *y
+                    }
+                    DataType::Bool(y) => {
+                        if *y {
+                            *x == 1
+                        }else{
+                            *x == 0
+                        }
+                    }
+                    _ => panic!("Cannot compare")
+                }
+            }
+            DataType::Float(x) => {
+                todo!()
+            }
+            DataType::Bool(_) => {todo!()}
+            DataType::String(x) => {
+                match other {
+                    DataType::String(y) => {
+                        *x == *y
+                    }
+                    _ => panic!("Cannot compare")
+                }
+            }
+            DataType::List(x) => {
+                match other {
+                    DataType::List(y) => {
+                        *x == *y
+                    }
+                    _ => panic!("Cannot compare")
+                }
+            }
+            DataType::None => {
+                panic!("Cannot compare")
             }
         }
     }
