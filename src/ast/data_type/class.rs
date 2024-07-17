@@ -1,34 +1,37 @@
 use std::collections::HashMap;
-use std::ops::Add;
-use clap::builder::Str;
-// use crate::ast::data_type::function::{Function, PyRecommendType, PyRustFunction};
-use crate::ast::scanner::TokenType;
+use std::fmt::Debug;
+use crate::ast::ast_struct::DataType;
 
-pub trait Class{
+pub(crate) trait Class:Debug + Clone{
     fn __name__(&self) -> String;
     fn __doc__(&self) -> String;
     fn __init__(&mut self, hash_map: HashMap<String,Self>) where Self: Sized;
-    fn __add__<T: Class>(&mut self,y: T) -> T{
+    fn __str__(self) -> String;
+    fn rust_get_attr(&self)-> HashMap<String,DataType>;
+    fn rust_clone(&self) -> Self;
+    fn __add__<T: Class>(&mut self, _y: T) -> T{
         panic!("Not impl")
     }
-    fn __sub__<T: Class>(&mut self,y:T) -> T{
+    fn __sub__<T: Class>(&mut self, _y:T) -> T{
         panic!("Not impl")
     }
-    fn __mult__<T: Class>(&mut self,y: T) -> T{
+    fn __mul__<T: Class>(&mut self, _y: T) -> T{
         panic!("Not impl")
     }
-    fn __div__<T: Class>(&mut self,y: T) -> T{
+    fn __div__<T: Class>(&mut self, _y: T) -> T{
         panic!("Not impl")
     }
 }
 fn check_class<T: Class>(x:T, name: String) -> bool{
     x.__name__() == name
 }
-struct Int{
-    x: i64,
-}
 
-impl Class for Int{
+
+#[derive(Debug,Clone)]
+pub struct PyInt{
+    pub(crate) x: i64,
+}
+impl Class for PyInt{
 
     fn __name__(&self) -> String {
         return String::from("int")
@@ -38,87 +41,142 @@ impl Class for Int{
         return String::from("Int, a python type")
     }
 
-    fn __init__(&mut self, x:HashMap<String, Int>) {
+    fn __init__(&mut self, x:HashMap<String, PyInt>) {
         self.x = match x.get("x") {
             None => {
                 panic!("Cannot init {}",self.__name__())
             }
             Some(x) => {
-                x.x
+                x.clone().x
             }
         }
     }
+
+    fn __str__(self) -> String {
+        String::from(self.x)
+    }
+
+    fn rust_get_attr(&self) -> HashMap<String, DataType> {
+        let vec = vec![(String::from("x"),DataType::Int(self.x))];
+        let hashmap:HashMap<String,DataType> =  vec.into_iter().collect();
+        return hashmap
+    }
+    fn rust_clone(&self) -> Self {
+        return PyInt{x:self.x.clone()}
+    }
+
 
     fn __add__<T: Class>(&mut self, y: T) -> T {
-        if check_class(y,"int") {
-
-        }
-    }
-}
-
-
-
-
-
-
-
-
-/*
-#[derive(Clone)]
-pub(crate) struct Class<T>
-    where T:Fn(HashMap<String, PyRecommendType<T>>) -> Box<PyRecommendType<T>>, T: Clone
-{
-    __name__: String,
-    __doc__: String,
-    __add__: Box<Function<T>>
-}
-
-impl<T> Class<T>
-    where T:Fn(HashMap<String, PyRecommendType<T>>) -> Box<PyRecommendType<T>>
-{
-    fn default() -> Box<Class<T>> {
-        fn not_impl<U>(x:HashMap<String, PyRecommendType<U>>) -> Box<PyRecommendType<U>>
-            where U:Fn(HashMap<String, PyRecommendType<U>>) -> Box<PyRecommendType<U>>
-        {
-            panic!("Not impl")
-        }
-        return Box::from(Class{
-            __name__: "".to_string(),
-            __doc__: "".to_string(),
-            __add__: Function::default(),
-        })
-    }
-    fn build(inherit: Box<Self>) -> Box<Class<T>> {
-        return Box::from(Class{
-            ..*inherit
-        })
-    }
-    fn impl_add(&mut self, def: Function<T>) {
-        self.__add__ = Box::from(def)
-    }
-}
-
-impl<T> Add for Class<T>
-    where T:Fn(HashMap<String, PyRecommendType<T>>) -> Box<PyRecommendType<T>>
-{
-    type Output = PyRecommendType<T>;
-
-    fn add(self, rhs: Class<T>) -> Self::Output {
-        let arg_fn  =  self.__add__.args.into_keys();
-        let arg_fn_vec:Vec<String> = Vec::from(arg_fn);
-        let args_vec = vec![
-            (arg_fn_vec[0].clone(), PyRecommendType::Class(self.clone())),
-            (arg_fn_vec[1].clone(),PyRecommendType::Class(rhs))
-        ];
-        let args_hashmap:HashMap<String, PyRecommendType<T>> = args_vec.into_iter().collect();
-        match self.clone().__add__.def {
-            PyRustFunction::None => {
-                panic!("Not impl")
+        let other = y.rust_get_attr();
+        match other.get("x") {
+            None => {
+                panic!("Type Error")
             }
-            PyRustFunction::Def(x) => {
-                x(args_hashmap)
+            Some(x) => {
+                match x {
+                    DataType::Int(x) => {
+                        PyInt{x: x+self.x}
+                    }
+                    DataType::Float(x) => {
+
+                    }
+                    DataType::Bool(_) => {}
+                    _ => panic!("Type Error")
+                }
             }
         }
     }
 }
-*/
+
+#[derive(Debug,Clone)]
+pub struct PyFloat{
+    pub(crate) x: f64
+}
+
+
+impl Class for PyFloat {
+    fn __name__(&self) -> String {
+        todo!()
+    }
+
+    fn __doc__(&self) -> String {
+        todo!()
+    }
+    fn __init__(&mut self, hash_map: HashMap<String, Self>)
+    where
+        Self: Sized
+    {
+        todo!()
+    }
+    fn __str__(self) -> String {
+        String::from(self.x)
+    }
+    fn rust_get_attr(&self) -> HashMap<String, DataType> {
+        todo!()
+    }
+
+    fn rust_clone(&self) -> Self {
+        return PyFloat{x:self.x.clone()}
+    }
+}
+#[derive(Debug,Clone)]
+pub struct PyBool{
+    pub(crate) x: bool
+}
+
+impl Class for PyBool{
+    fn __name__(&self) -> String {
+        todo!()
+    }
+
+    fn __doc__(&self) -> String {
+        todo!()
+    }
+
+    fn __init__(&mut self, hash_map: HashMap<String, Self>)
+    where
+        Self: Sized
+    {
+        todo!()
+    }
+    fn __str__(self) -> String {
+        String::from(self.x)
+    }
+    fn rust_get_attr(&self) -> HashMap<String, DataType> {
+        todo!()
+    }
+    fn rust_clone(&self) -> Self {
+        return PyBool{x:self.x.clone()}
+    }
+}
+#[derive(Debug,Clone)]
+pub struct PyStr{
+    pub(crate) x: String
+}
+
+impl Class for PyStr{
+    fn __name__(&self) -> String {
+        todo!()
+    }
+
+    fn __doc__(&self) -> String {
+        todo!()
+    }
+
+    fn __init__(&mut self, hash_map: HashMap<String, Self>)
+    where
+        Self: Sized
+    {
+        todo!()
+    }
+    fn __str__(self) -> String {
+        String::from(self.x)
+    }
+    fn rust_get_attr(&self) -> HashMap<String, DataType> {
+        todo!()
+    }
+
+    fn rust_clone(&self) -> Self {
+        return PyStr{x:self.x.clone()}
+    }
+}

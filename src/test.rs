@@ -1,5 +1,5 @@
 use crate::ast::ast_analyze::build_parser;
-use crate::ast::ast_struct::{BinOp, BeAbleToRun, Constant, DataType, Operator, Type};
+use crate::ast::ast_struct::{BinOp, RustExpression, Constant, DataType, Operator, Type};
 use crate::ast::scanner::build_scanner;
 
 #[test]

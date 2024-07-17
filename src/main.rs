@@ -1,4 +1,3 @@
-#![feature(iter_collect_into)]
 extern crate core;
 
 use crate::test::test;

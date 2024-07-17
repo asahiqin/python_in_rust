@@ -1,3 +1,2 @@
-mod calc;
-mod class;
+pub mod class;
 mod function;

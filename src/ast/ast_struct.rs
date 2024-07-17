@@ -1,33 +1,33 @@
-use std::ops::{Add, Div, Mul, Sub};
+use std::fmt::Debug;
+use crate::ast::data_type::class::Class;
 
 #[derive(Debug)]
-pub struct ASTNode {
-    pub(crate) body: Vec<Type>,
+pub struct ASTNode<T:Class> {
+    pub(crate) body: Vec<Type<T>>,
     pub(crate) lineno: usize,
     pub(crate) end_lineno: usize,
     pub(crate) col_offset: usize,
     pub(crate) end_col_offset: usize,
 }
 #[derive(Debug, Clone)]
-pub enum Type {
-    Assign(Box<Assign>),
-    Constant(Constant),
-    Name(Name),
-    BinOp(BinOp),
-    Compare(Compare),
-    UnaryOp(UnaryOp),
-    BoolOp(BoolOp),
+pub enum Type<T:Class> {
+    Assign(Box<Assign<T>>),
+    Constant(Constant<T>),
+    Name(Name<T>),
+    BinOp(BinOp<T>),
+    Compare(Compare<T>),
+    UnaryOp(UnaryOp<T>),
+    BoolOp(BoolOp<T>),
     None
 }
-impl Type{
-    pub fn exec_self(&self) -> Type{
+impl<T:Class> Type<T>{
+    pub fn exec_self(&self) -> Type<T>{
         match self.clone() {
             Type::Assign(x) => {
                 todo!();
-                return Type::None
             }
-            Type::Constant(x) => {
-                return Type::Constant(x.clone())
+            Type::Constant(mut x) => {
+               return return Type::Constant(x.exec())
             }
             Type::Name(x) => {
                 todo!()
@@ -51,16 +51,22 @@ impl Type{
     }
 }
 #[derive(Debug, Clone)]
-pub struct Assign {
-    pub(crate) target: Name,
-    pub(crate) value: Box<Type>,
+pub struct Assign<T:Class> {
+    pub(crate) target: Name<T>,
+    pub(crate) value: Box<Type<T>>,
     pub(crate) type_comment: String,
 }
 #[derive(Debug, Clone)]
-pub struct Name {
+pub struct Name<T:Class> {
     pub(crate) id: String,
-    pub(crate) value: Constant,
+    pub(crate) value: T,
     pub(crate) type_comment: String,
+}
+
+impl<T:Class> RustExpression<T> for Name<T> {
+    fn exec(&mut self) -> T {
+        todo!()
+    }
 }
 #[derive(Debug, Clone)]
 pub enum DataType {
@@ -72,60 +78,21 @@ pub enum DataType {
     None,
 }
 #[derive(Debug, Clone)]
-pub struct Constant {
-    pub(crate) value: DataType,
+pub struct Constant<T: Class> {
+    pub(crate) value: T,
     pub(crate) type_comment: String,
 }
-
-impl Constant {
-    pub(crate) fn new(value: DataType) -> Constant {
+impl<T:Class> RustExpression<T> for Constant<T>{
+    fn exec(&mut self) -> T {
+        return self.clone()
+    }
+}
+impl<T:Class> Constant<T> {
+    pub(crate) fn new(value: T) -> Constant<T> {
         return Constant {
             value,
             type_comment: "".to_string(),
         };
-    }
-}
-
-// This is a temporary implementation
-// Will be rewritten in the future
-impl Add for Constant {
-    type Output = Constant;
-
-    fn add(self, rhs: Self) -> Self::Output {
-        Constant {
-            value: self.value + rhs.value,
-            type_comment: "".to_string(),
-        }
-    }
-}
-impl Sub for Constant {
-    type Output = Constant;
-
-    fn sub(self, rhs: Self) -> Self::Output {
-        Constant {
-            value: self.value - rhs.value,
-            type_comment: "".to_string(),
-        }
-    }
-}
-impl Mul for Constant {
-    type Output = Constant;
-
-    fn mul(self, rhs: Self) -> Self::Output {
-        Constant {
-            value: self.value * rhs.value,
-            type_comment: "".to_string(),
-        }
-    }
-}
-impl Div for Constant {
-    type Output = Constant;
-
-    fn div(self, rhs: Self) -> Self::Output {
-        Constant {
-            value: self.value / rhs.value,
-            type_comment: "".to_string(),
-        }
     }
 }
 #[derive(Debug, Clone)]
@@ -155,221 +122,81 @@ pub enum Operator {
     Or,
 }
 
-#[macro_export]
-macro_rules! generate_op_fn {
-    ($op: expr) => {{
-        let op: Operator = $op;
-        match op {
+impl Operator{
+    fn calc<T: Class>(&self, mut left:T, right:T) -> T{
+        match self {
             Operator::Add => {
-                fn add<T: Add<Output = T>>(x: T, y: T) -> T {
-                    x + y
-                }
-                add
+                left.__add__(right)
             }
             Operator::Sub => {
-                fn sub<T: Sub<Output = T>>(x: T, y: T) -> T {
-                    x - y
-                }
-                sub
+                left.__sub__(right)
             }
             Operator::Mult => {
-                fn mult<T: Mul<Output = T>>(x: T, y: T) -> T {
-                    x * y
-                }
-                mult
+                left.__mul__(right)
             }
             Operator::Div => {
-                fn div<T: Div<Output = T>>(x: T, y: T) -> T {
-                    x / y
-                }
-                div
+                left.__div__(right)
             }
-            _ => todo!(),
+            Operator::Mod => {}
+            _ => todo!()
         }
-    }};
+    }
 }
 
-pub trait BeAbleToRun {
-    fn exec(&mut self) -> Constant;
+
+pub trait RustExpression<T:Class> {
+    fn exec(&mut self) -> T;
 }
 #[derive(Debug, Clone)]
-pub struct BinOp {
-    pub left: Box<Type>,
+pub struct BinOp<T:Class> {
+    pub left: Box<Type<T>>,
     pub op: Operator,
-    pub right: Box<Type>,
+    pub right: Box<Type<T>>,
 }
-fn deref_expression(data: Type) -> Constant {
-    let mut _x:Constant;
-    match data {
-        Type::Constant(x) => {
-            _x = x.clone();
-        }
-        Type::Name(_) => {
-            todo!()
-        }
-        Type::BinOp(ref x) => {
-            _x = x.clone().exec();
-        }
-        Type::Compare(ref x) => {
-            _x = x.clone().exec();
-        }
-        Type::UnaryOp(ref x) => {
-            _x = x.clone().exec();
-        }
-        Type::BoolOp(ref x) => {
-            _x = x.clone().exec();
-        }
-        _ => panic!("Error at calc"),
-    }
+fn deref_expression<T: RustExpression<U>, U:Class>(mut data: T) -> U {
+    let mut _x:Constant<T>;
+    _x = data.exec();
     _x
 }
-impl BeAbleToRun for BinOp {
-    fn exec(&mut self) -> Constant {
-        let _x: Constant=deref_expression(*self.left.clone()).clone();
-        let _y: Constant = deref_expression(*self.right.clone()).clone();
-        // println!("{:?} {:?} {:?}", _x, _y, self.op);
-        generate_op_fn!(self.op.clone())(_x, _y)
+impl<T:Class> RustExpression<T> for BinOp<T> {
+    fn exec(&mut self) -> T {
+        todo!()
+
     }
 }
 #[derive(Debug, Clone)]
-pub struct Compare {
-    pub(crate) left: Box<Type>,
+pub struct Compare<T:Class> {
+    pub(crate) left: Box<Type<T>>,
     pub(crate) ops: Vec<Operator>,
-    pub(crate) comparators: Vec<Box<Type>>,
+    pub(crate) comparators: Vec<Box<Type<T>>>,
 }
 
-impl BeAbleToRun for Compare {
-    fn exec(&mut self) -> Constant {
-        let mut list = vec![self.left.clone()];
-        list.append(&mut self.comparators);
-        let bools = vec![false; list.len()-1];
-        for (index,item) in list.iter().enumerate() {
-            match list.get(index+1) {
-                None => {
-                    break
-                }
-                Some(x) => {
-                    let left = deref_expression(*item.clone());
-                    let comparator = deref_expression(*x.clone());
-                    match left.value {
-                        DataType::Int(_) => {}
-                        DataType::Float(_) => {}
-                        DataType::Bool(_) => {}
-                        DataType::String(_) => {}
-                        DataType::List(_) => {}
-                        DataType::None => {
-                            panic!("Cannot Compare")
-                        }
-                    }
-                }
-            }
-        }
-        if bools.iter().filter(|&&x| x == true).count() == bools.len() {
-            return Constant{
-                value: DataType::Bool(true),
-                type_comment: "".to_string(),
-            };
-        } else {
-            return Constant{
-                value: DataType::Bool(false),
-                type_comment: "".to_string(),
-            };
-        }
+impl<T:Class> RustExpression<T> for Compare<T>{
+    fn exec(&mut self) -> T {
+        todo!()
+    }
+}
+
+
+#[derive(Debug, Clone)]
+pub struct UnaryOp<T:Class> {
+    pub op: Operator,
+    pub operand: Box<Type<T>>,
+}
+impl<T:Class> RustExpression<T> for UnaryOp<T>{
+    fn exec(&mut self) -> T {
+        todo!()
     }
 }
 
 #[derive(Debug, Clone)]
-pub struct UnaryOp {
+pub struct BoolOp<T:Class> {
     pub op: Operator,
-    pub operand: Box<Type>,
+    pub values: Box<Vec<Type<T>>>,
 }
 
-impl BeAbleToRun for UnaryOp {
-    fn exec(&mut self) -> Constant {
-        let _x:Constant = deref_expression(*self.operand.clone()).clone();
-        match self.op {
-            Operator::UAdd => {
-                return match _x.value {
-                    DataType::Bool(x) => {
-                        Constant {
-                            value: DataType::Bool(x),
-                            type_comment: "".to_string(),
-                        }
-                    }
-                    DataType::Int(x) => {
-                        Constant {
-                            value: DataType::Int(x),
-                            type_comment: "".to_string(),
-                        }
-                    }
-                    DataType::Float(x) => {
-                        Constant {
-                            value: DataType::Float(x),
-                            type_comment: "".to_string(),
-                        }
-                    }
-                    _ => panic!("Unsupported operate")
-                }
-            },
-            Operator::USub => {
-                return match _x.value {
-                    DataType::Bool(x) => {
-                        Constant {
-                            value: DataType::Int(if x { -1 } else { 0 }),
-                            type_comment: "".to_string(),
-                        }
-                    }
-                    DataType::Int(x) => {
-                        Constant {
-                            value: DataType::Int(-x),
-                            type_comment: "".to_string(),
-                        }
-                    }
-                    DataType::Float(x) => {
-                        Constant {
-                            value: DataType::Float(-x),
-                            type_comment: "".to_string(),
-                        }
-                    }
-                    _ => panic!("Unsupported operate")
-                }
-            },
-            Operator::Not => {
-                return match _x.value {
-                    DataType::Bool(x) => {
-                        Constant {
-                            value: DataType::Bool(!x),
-                            type_comment: "".to_string(),
-                        }
-                    }
-                    DataType::Int(x) => {
-                        Constant {
-                            value: DataType::Bool(if x!=0 { true } else { false }),
-                            type_comment: "".to_string(),
-                        }
-                    }
-                    DataType::Float(x) => {
-                        Constant {
-                            value: DataType::Bool(if x!=0.0 { true } else { false }),
-                            type_comment: "".to_string(),
-                        }
-                    }
-                    _ => panic!("Unsupported operate")
-                }
-            }
-            _ => panic!("Unsupported operator")
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct BoolOp {
-    pub op: Operator,
-    pub values: Box<Vec<Type>>,
-}
-
-impl BeAbleToRun for BoolOp {
-    fn exec(&mut self) -> Constant {
+impl<T:Class> RustExpression<T> for BoolOp<T> {
+    fn exec(&mut self) -> T {
         todo!()
     }
 }

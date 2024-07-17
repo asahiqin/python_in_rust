@@ -1,11 +1,13 @@
 use std::error::Error;
+use std::fmt::Debug;
 
-use crate::ast::ast_struct::Operator::Not;
 use crate::ast::ast_struct::{
-    ASTNode, BinOp, BoolOp, Compare, Constant, DataType, Operator, Type, UnaryOp,
+    ASTNode, BinOp, BoolOp, Compare, Constant, Operator, Type, UnaryOp,
 };
-use crate::ast::scanner::TokenType::{BangEqual, EqualEqual, GreaterEqual, In, Is, LeftParen, LessEqual, Minus, Plus, Slash, Star, AND, EOF, GREATER, LESS, NOT, OR, RightParen};
+use crate::ast::ast_struct::Operator::Not;
+use crate::ast::data_type::class::{Class, PyBool, PyFloat, PyInt, PyStr};
 use crate::ast::scanner::{Literal, Scanner, Token, TokenType};
+use crate::ast::scanner::TokenType::{AND, BangEqual, EOF, EqualEqual, GREATER, GreaterEqual, In, Is, LeftParen, LESS, LessEqual, Minus, NOT, OR, Plus, RightParen, Slash, Star};
 
 #[derive(Debug)]
 pub struct TokenIter {
@@ -105,11 +107,11 @@ impl TokenIter {
     }
 }
 #[derive(Debug)]
-pub struct Parser {
-    ast_list: ASTNode,
+pub struct Parser<T:Class> {
+    ast_list: ASTNode<T>,
     token_iter: TokenIter,
 }
-pub(crate) fn build_parser(scanner: Scanner) -> Parser {
+pub(crate) fn build_parser<T:Class + std::clone::Clone>(scanner: Scanner) -> Parser<T> {
     let lineno = scanner.lineno;
     let end_lineno = scanner.end_lineno;
     let col_offset = scanner.col_offset;
@@ -125,27 +127,27 @@ pub(crate) fn build_parser(scanner: Scanner) -> Parser {
         token_iter: TokenIter::new(scanner.token),
     };
 }
-impl Parser {
-    pub fn parser(&mut self) -> Type {
+impl<T:Class> Parser<T> {
+    pub fn parser(&mut self) -> Type<T> {
         return self.expression()
     }
-    fn primary(&mut self) -> Result<Type, Box<dyn Error>> {
+    fn primary(&mut self) -> Result<Type<T>, Box<dyn Error>> {
         println!("{}", self.token_iter.current);
         if self.token_iter.catch([TokenType::TRUE]) {
-            return Ok(Type::Constant(Constant::new(DataType::Bool(true))));
+            return Ok(Type::<PyBool>::Constant(Constant::<PyBool>::new(PyBool{x: true})));
         }
         if self.token_iter.catch([TokenType::FALSE]) {
-            return Ok(Type::Constant(Constant::new(DataType::Bool(false))));
+            return Ok(Type::Constant(Constant::<T>::new(PyBool{x: true})));
         }
         if self
             .token_iter
             .catch([TokenType::STRING, TokenType::NUMBER])
         {
-            return Ok(Type::Constant(Constant::new(
+            return Ok(Type::Constant(Constant::<T>::new(
                 match self.token_iter.previous(1).literal {
-                    Literal::String(str) => DataType::String(str),
-                    Literal::Float(float) => DataType::Float(float),
-                    Literal::Int(int) => DataType::Int(int),
+                    Literal::String(str) => PyStr{x:str},
+                    Literal::Float(float) => PyFloat{x:float},
+                    Literal::Int(int) => PyInt{x:int},
                     _ => panic!("Error at parser"),
                 },
             )));
@@ -159,7 +161,7 @@ impl Parser {
         }
         Err(std::fmt::Error.into())
     }
-    fn unary(&mut self) -> Result<Type, Box<dyn Error>> {
+    fn unary(&mut self) -> Result<Type<T>, Box<dyn Error>> {
         if self.token_iter.catch([NOT, Minus, Plus]) {
             let token = match self.token_iter.previous(1).token_type {
                 NOT => Not,
@@ -175,8 +177,8 @@ impl Parser {
         let primary = self.primary()?;
         return Ok(primary);
     }
-    fn factor(&mut self) -> Result<Type, Box<dyn Error>> {
-        let expr: Type = self.unary()?;
+    fn factor(&mut self) -> Result<Type<T>, Box<dyn Error>> {
+        let expr: Type<T> = self.unary()?;
         while self.token_iter.catch([Star, Slash]) {
             let token = match self.token_iter.previous(1).token_type {
                 Star => Operator::Mult,
@@ -191,8 +193,8 @@ impl Parser {
         }
         Ok(expr)
     }
-    fn term(&mut self) -> Result<Type, Box<dyn Error>> {
-        let expr: Type = self.factor()?;
+    fn term(&mut self) -> Result<Type<T>, Box<dyn Error>> {
+        let expr: Type<T> = self.factor()?;
         while self.token_iter.catch([Minus, Plus]) {
             let token = match self.token_iter.previous(1).token_type {
                 Minus => Operator::Sub,
@@ -207,8 +209,8 @@ impl Parser {
         }
         Ok(expr)
     }
-    fn comparison(&mut self) -> Result<Type, Box<dyn Error>> {
-        let expr: Type = self.term()?;
+    fn comparison(&mut self) -> Result<Type<T>, Box<dyn Error>> {
+        let expr: Type<T> = self.term()?;
         while self.token_iter.catch([
             BangEqual,
             EqualEqual,
@@ -236,7 +238,7 @@ impl Parser {
                 _ => Operator::Gt,
             };
             let comparator = self.comparison()?;
-            let mut comparators: Vec<Box<Type>> = vec![];
+            let mut comparators: Vec<Box<Type<T>>> = vec![];
             let mut ops: Vec<Operator> = vec![token];
             match comparator {
                 Type::Compare(compare) => {
@@ -249,19 +251,19 @@ impl Parser {
             return Ok(Type::Compare(Compare {
                 left: Box::new(expr),
                 ops,
-                comparators: comparators,
+                comparators,
             }));
         }
         Ok(expr)
     }
-    fn bool_operate(&mut self) -> Result<Type, Box<dyn Error>> {
+    fn bool_operate(&mut self) -> Result<Type<T>, Box<dyn Error>> {
         let expr = self.comparison()?;
         while self.token_iter.catch([AND, OR]) {
             let operator = match self.token_iter.previous(1).token_type {
                 AND => Operator::And,
                 _ => Operator::Or,
             };
-            let mut values: Vec<Type> = vec![expr];
+            let mut values: Vec<Type<T>> = vec![expr];
             let value = self.bool_operate()?;
             match value {
                 Type::BoolOp(v) => values.extend(v.values.into_iter().clone()),
@@ -274,7 +276,7 @@ impl Parser {
         }
         Ok(expr)
     }
-    fn expression(&mut self) -> Type {
+    fn expression(&mut self) -> Type<T> {
         match self.bool_operate() {
             Ok(expr) => return expr,
             Err(e) => {
