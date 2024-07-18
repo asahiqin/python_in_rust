@@ -1,13 +1,14 @@
 use std::error::Error;
-use std::fmt::Debug;
 
-use crate::ast::ast_struct::{
-    ASTNode, BinOp, BoolOp, Compare, Constant, Operator, Type, UnaryOp,
-};
 use crate::ast::ast_struct::Operator::Not;
-use crate::ast::data_type::class::{Class, PyBool, PyFloat, PyInt, PyStr};
+use crate::ast::ast_struct::{
+    ASTNode, BinOp, BoolOp, Compare, Constant, DataType, Operator, Type, UnaryOp,
+};
+use crate::ast::scanner::TokenType::{
+    BangEqual, EqualEqual, GreaterEqual, In, Is, LeftParen, LessEqual, Minus, Plus, Slash, Star,
+    AND, EOF, GREATER, LESS, NOT, OR,
+};
 use crate::ast::scanner::{Literal, Scanner, Token, TokenType};
-use crate::ast::scanner::TokenType::{AND, BangEqual, EOF, EqualEqual, GREATER, GreaterEqual, In, Is, LeftParen, LESS, LessEqual, Minus, NOT, OR, Plus, RightParen, Slash, Star};
 
 #[derive(Debug)]
 pub struct TokenIter {
@@ -74,13 +75,6 @@ impl TokenIter {
     ) -> bool {
         for tokens in token_lists {
             let mut confirms = vec![false; tokens.into_iter().count()];
-            println!("{:?}", confirms);
-            match self.vec_token.get(self.current + tokens.into_iter().count()) {
-                None => {
-                    continue
-                }
-                Some(_) => {}
-            }
             for (index, item) in tokens.into_iter().enumerate() {
                 if self.check(item) {
                     confirms[index] = true;
@@ -90,12 +84,14 @@ impl TokenIter {
             if confirms.iter().filter(|&&x| x == true).count() == confirms.len() {
                 return true;
             } else {
-                self.back(confirms.iter().len()).unwrap();
+                self.back(confirms.len()).unwrap();
             }
         }
         false
     }
     fn consume(&mut self, token_type: TokenType, err: String) -> Result<Token, String> {
+        println!("{:?}", self.peek());
+        self.advance();
         if self.check(token_type) {
             return Ok(self.advance());
         }
@@ -107,11 +103,11 @@ impl TokenIter {
     }
 }
 #[derive(Debug)]
-pub struct Parser<T:Class> {
-    ast_list: ASTNode<T>,
+pub struct Parser {
+    ast_list: ASTNode,
     token_iter: TokenIter,
 }
-pub(crate) fn build_parser<T:Class + std::clone::Clone>(scanner: Scanner) -> Parser<T> {
+pub(crate) fn build_parser(scanner: Scanner) -> Parser {
     let lineno = scanner.lineno;
     let end_lineno = scanner.end_lineno;
     let col_offset = scanner.col_offset;
@@ -127,41 +123,40 @@ pub(crate) fn build_parser<T:Class + std::clone::Clone>(scanner: Scanner) -> Par
         token_iter: TokenIter::new(scanner.token),
     };
 }
-impl<T:Class> Parser<T> {
-    pub fn parser(&mut self) -> Type<T> {
-        return self.expression()
+impl Parser {
+    pub fn parser(&mut self) -> Type {
+        println!("{:?}", self.expression());
+        return self.expression();
     }
-    fn primary(&mut self) -> Result<Type<T>, Box<dyn Error>> {
-        println!("{}", self.token_iter.current);
+    fn primary(&mut self) -> Result<Type, Box<dyn Error>> {
         if self.token_iter.catch([TokenType::TRUE]) {
-            return Ok(Type::<PyBool>::Constant(Constant::<PyBool>::new(PyBool{x: true})));
+            return Ok(Type::Constant(Constant::new(DataType::Bool(false))));
         }
         if self.token_iter.catch([TokenType::FALSE]) {
-            return Ok(Type::Constant(Constant::<T>::new(PyBool{x: true})));
+            return Ok(Type::Constant(Constant::new(DataType::Bool(true))));
         }
         if self
             .token_iter
             .catch([TokenType::STRING, TokenType::NUMBER])
         {
-            return Ok(Type::Constant(Constant::<T>::new(
+            return Ok(Type::Constant(Constant::new(
                 match self.token_iter.previous(1).literal {
-                    Literal::String(str) => PyStr{x:str},
-                    Literal::Float(float) => PyFloat{x:float},
-                    Literal::Int(int) => PyInt{x:int},
-                    _ => panic!("Error at parser"),
+                    Literal::String(str) => DataType::String(str),
+                    Literal::Float(float) => DataType::Float(float),
+                    Literal::Int(int) => DataType::Int(int),
+                    _ => DataType::Int(0),
                 },
             )));
         }
         if self.token_iter.catch([LeftParen]) {
             let expr = self.expression();
-            println!("{:?}", expr);
             self.token_iter
-                .consume(RightParen, "".to_string())?;
+                .consume(TokenType::RightParen, "".to_string())?;
             return Ok(expr);
         }
         Err(std::fmt::Error.into())
     }
-    fn unary(&mut self) -> Result<Type<T>, Box<dyn Error>> {
+    fn unary(&mut self) -> Result<Type, Box<dyn Error>> {
         if self.token_iter.catch([NOT, Minus, Plus]) {
             let token = match self.token_iter.previous(1).token_type {
                 NOT => Not,
@@ -177,12 +172,28 @@ impl<T:Class> Parser<T> {
         let primary = self.primary()?;
         return Ok(primary);
     }
-    fn factor(&mut self) -> Result<Type<T>, Box<dyn Error>> {
-        let expr: Type<T> = self.unary()?;
+    fn factor(&mut self) -> Result<Type, Box<dyn Error>> {
+        let expr: Type = self.unary()?;
         while self.token_iter.catch([Star, Slash]) {
             let token = match self.token_iter.previous(1).token_type {
                 Star => Operator::Mult,
                 _ => Operator::Div,
+            };
+            let right = self.unary()?;
+            return Ok(Type::BinOp(BinOp {
+                left: Box::new(expr),
+                op: token,
+                right: Box::new(right),
+            }));
+        }
+        Ok(expr)
+    }
+    fn term(&mut self) -> Result<Type, Box<dyn std::error::Error>> {
+        let expr: Type = self.factor()?;
+        while self.token_iter.catch([Minus, Plus]) {
+            let token = match self.token_iter.previous(1).token_type {
+                Minus => Operator::Sub,
+                _ => Operator::Add,
             };
             let right = self.factor()?;
             return Ok(Type::BinOp(BinOp {
@@ -193,24 +204,8 @@ impl<T:Class> Parser<T> {
         }
         Ok(expr)
     }
-    fn term(&mut self) -> Result<Type<T>, Box<dyn Error>> {
-        let expr: Type<T> = self.factor()?;
-        while self.token_iter.catch([Minus, Plus]) {
-            let token = match self.token_iter.previous(1).token_type {
-                Minus => Operator::Sub,
-                _ => Operator::Add,
-            };
-            let right = self.term()?;
-            return Ok(Type::BinOp(BinOp {
-                left: Box::new(expr),
-                op: token,
-                right: Box::new(right),
-            }));
-        }
-        Ok(expr)
-    }
-    fn comparison(&mut self) -> Result<Type<T>, Box<dyn Error>> {
-        let expr: Type<T> = self.term()?;
+    fn comparison(&mut self) -> Result<Type, Box<dyn std::error::Error>> {
+        let expr: Type = self.term()?;
         while self.token_iter.catch([
             BangEqual,
             EqualEqual,
@@ -238,32 +233,32 @@ impl<T:Class> Parser<T> {
                 _ => Operator::Gt,
             };
             let comparator = self.comparison()?;
-            let mut comparators: Vec<Box<Type<T>>> = vec![];
+            let mut comparators: Vec<Type> = vec![];
             let mut ops: Vec<Operator> = vec![token];
             match comparator {
                 Type::Compare(compare) => {
-                    comparators.push(Box::from(*compare.left));
+                    comparators.push(*compare.left);
                     comparators.extend(compare.comparators.into_iter().clone());
                     ops.extend(compare.ops.into_iter().clone())
                 }
-                _ => comparators.push(Box::from(comparator)),
+                _ => comparators.push(comparator),
             }
             return Ok(Type::Compare(Compare {
                 left: Box::new(expr),
                 ops,
-                comparators,
+                comparators: Box::from(comparators),
             }));
         }
         Ok(expr)
     }
-    fn bool_operate(&mut self) -> Result<Type<T>, Box<dyn Error>> {
+    fn bool_operate(&mut self) -> Result<Type, Box<dyn std::error::Error>> {
         let expr = self.comparison()?;
         while self.token_iter.catch([AND, OR]) {
             let operator = match self.token_iter.previous(1).token_type {
                 AND => Operator::And,
                 _ => Operator::Or,
             };
-            let mut values: Vec<Type<T>> = vec![expr];
+            let mut values: Vec<Type> = vec![expr];
             let value = self.bool_operate()?;
             match value {
                 Type::BoolOp(v) => values.extend(v.values.into_iter().clone()),
@@ -276,7 +271,7 @@ impl<T:Class> Parser<T> {
         }
         Ok(expr)
     }
-    fn expression(&mut self) -> Type<T> {
+    fn expression(&mut self) -> Type {
         match self.bool_operate() {
             Ok(expr) => return expr,
             Err(e) => {

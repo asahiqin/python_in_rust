@@ -1,6 +1,9 @@
 use crate::ast::ast_analyze::build_parser;
-use crate::ast::ast_struct::{BinOp, RustExpression, Constant, DataType, Operator, Type};
+use crate::ast::ast_struct::{BinOp, Calc, Constant, DataType, Operator, Type};
+use crate::ast::data_type::inter_type::obj_int;
+use crate::ast::data_type::object::{ObjAttr, Object};
 use crate::ast::scanner::build_scanner;
+use crate::define_obj_method;
 
 #[test]
 fn test_scanner() {
@@ -17,7 +20,7 @@ fn test_rust() {
             type_comment: "".to_string(),
         })),
         op: Operator::Add,
-        right: Box::new(Type::BinOp(BinOp{
+        right: Box::new(Type::BinOp(BinOp {
             left: Box::new(Type::Constant(Constant {
                 value: DataType::Int(3),
                 type_comment: "".to_string(),
@@ -29,7 +32,7 @@ fn test_rust() {
             })),
         })),
     };
-    println!("{:?}", op.exec());
+    println!("{:?}", op.calc());
 }
 #[test]
 fn test_parser() {
@@ -42,12 +45,17 @@ fn test_parser() {
 #[test]
 pub fn test() {
     //println!("{}",strip_quotes!("\"\"\"hello\"\nworld\"\"\""));
-    let source = String::from("(not True)+(not False)+(0.1+0.2)/3+10");
+    let source = String::from("1+3*(3+2)");
     let mut scanner = build_scanner(source);
     scanner.scan();
-    println!("{:?}", scanner.token);
     let mut parser = build_parser(scanner);
-    let expr = parser.parser();
-    println!("{:?}", expr);
-    println!("{:?}", expr.exec_self());
+    parser.parser();
+}
+
+#[test]
+fn test_object() {
+    let mut a = obj_int(1);
+    let hashmap =
+        a.convert_vec_to_hashmap("__add__".to_string(), vec![ObjAttr::Interpreter(Box::from(obj_int(2)))]);
+    println!("{:?}", a.add(hashmap));
 }
