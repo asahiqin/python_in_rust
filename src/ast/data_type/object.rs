@@ -16,12 +16,14 @@ impl RustObjBehavior {
         }
     }
 }
+#[allow(dead_code)]
 #[derive(Clone, Debug)]
 pub(crate) enum ObjBehaviors {
     Interpreter,
     Rust(Box<RustObjBehavior>),
     None,
 }
+#[allow(dead_code)]
 #[derive(Clone, Debug)]
 pub enum ObjAttr {
     Interpreter(Box<Object>),
@@ -80,6 +82,8 @@ impl Object {
 }
 pub type HashMapAttr = HashMap<String, ObjAttr>;
 pub type HashMapBehavior = HashMap<String, ObjBehaviors>;
+
+#[allow(dead_code)]
 #[derive(Clone, Debug)]
 pub enum PyResult {
     None,
@@ -88,6 +92,7 @@ pub enum PyResult {
     ChangeBehavior(HashMapBehavior, Box<PyResult>),
     Err,
 }
+#[allow(dead_code)]
 impl Object {
     fn inner_call(&self, behavior: String, other: HashMapAttr) -> PyResult {
         match self.behaviors.get(&behavior) {

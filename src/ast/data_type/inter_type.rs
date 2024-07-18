@@ -19,7 +19,7 @@ fn get_from_hashmap(name: String, args: HashMapAttr) -> ObjAttr {
         Some(x) => x.clone(),
     }
 }
-fn get_from_obj(name: String, obj:Object) -> ObjAttr {
+fn get_from_obj(name: String, obj: Object) -> ObjAttr {
     match obj.attr.get(&name) {
         None => {
             panic!("Cannot get")
@@ -47,46 +47,47 @@ pub fn obj_int(x: i64) -> Object {
 
 pub fn int_behaviour(method: String, args: HashMapAttr) -> PyResult {
     let obj_self = get_from_hashmap("self".parse().unwrap(), args.clone());
-    let mut obj_x:DataType=DataType::Int(0);
+    let mut obj_x: DataType = DataType::Int(0);
     match obj_self {
         ObjAttr::Interpreter(obj) => {
-            obj_x = match get_from_hashmap("x".parse().unwrap(), obj.attr){
-                ObjAttr::Rust(x) => {
-                    x.clone()
-                }
+            obj_x = match get_from_hashmap("x".parse().unwrap(), obj.attr) {
+                ObjAttr::Rust(x) => x.clone(),
                 _ => {
                     panic!("Error to get")
                 }
             }
         }
-        _ => panic!("Error at calc")
+        _ => panic!("Error at calc"),
     }
-    println!("{:?}",obj_x);
+    println!("{:?}", obj_x);
     define_obj_method!(method method;identity "__add__";content {
         let other_obj= get_from_hashmap("other".parse().unwrap(),args);
         let other = get_attr_until_rust(other_obj,"x".parse().unwrap());
         println!("{:?}" ,other);
         return PyResult::Some(
-            match obj_x+other{
-                DataType::Int(x) => obj_int(x),
-                _ => todo!()
+            match obj_x.add(other){
+                Ok(x) => {
+                    match x{
+                        DataType::Int(x) => {
+                            obj_int(x)
+                        }
+                        _ => todo!()
+                    }
+                }
+                Err(_) => { panic!("Cannot Calc")}
             }
         )
     });
     PyResult::None
 }
 
-fn get_obj_until_rust(obj:Object, name:String) -> DataType{
-    get_attr_until_rust(get_from_obj(name.clone(),obj),name)
+fn get_obj_until_rust(obj: Object, name: String) -> DataType {
+    get_attr_until_rust(get_from_obj(name.clone(), obj), name)
 }
-fn get_attr_until_rust(attr:ObjAttr, name:String) -> DataType{
+fn get_attr_until_rust(attr: ObjAttr, name: String) -> DataType {
     match attr {
-        ObjAttr::Interpreter(x) => {
-            return get_obj_until_rust(*x.clone(),name.clone())
-        }
-        ObjAttr::Rust(x) => {
-            return x
-        }
+        ObjAttr::Interpreter(x) => return get_obj_until_rust(*x.clone(), name.clone()),
+        ObjAttr::Rust(x) => return x,
         ObjAttr::None => {
             panic!("Cannot get")
         }

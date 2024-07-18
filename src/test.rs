@@ -1,9 +1,8 @@
 use crate::ast::ast_analyze::build_parser;
 use crate::ast::ast_struct::{BinOp, Calc, Constant, DataType, Operator, Type};
 use crate::ast::data_type::inter_type::obj_int;
-use crate::ast::data_type::object::{ObjAttr, Object};
+use crate::ast::data_type::object::ObjAttr;
 use crate::ast::scanner::build_scanner;
-use crate::define_obj_method;
 
 #[test]
 fn test_scanner() {
@@ -55,7 +54,9 @@ pub fn test() {
 #[test]
 fn test_object() {
     let mut a = obj_int(1);
-    let hashmap =
-        a.convert_vec_to_hashmap("__add__".to_string(), vec![ObjAttr::Interpreter(Box::from(obj_int(2)))]);
+    let hashmap = a.convert_vec_to_hashmap(
+        "__add__".to_string(),
+        vec![ObjAttr::Interpreter(Box::from(obj_int(2)))],
+    );
     println!("{:?}", a.add(hashmap));
 }

@@ -1,5 +1,4 @@
-use std::ops::{Add, Div, Mul, Sub};
-
+#[allow(dead_code)]
 #[derive(Debug)]
 pub struct ASTNode {
     pub(crate) body: Vec<Type>,
@@ -8,6 +7,7 @@ pub struct ASTNode {
     pub(crate) col_offset: usize,
     pub(crate) end_col_offset: usize,
 }
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub enum Type {
     Assign(Box<Assign>),
@@ -18,18 +18,21 @@ pub enum Type {
     UnaryOp(UnaryOp),
     BoolOp(BoolOp),
 }
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct Assign {
     pub(crate) target: Name,
     pub(crate) value: Box<Type>,
     pub(crate) type_comment: String,
 }
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct Name {
     pub(crate) id: String,
     pub(crate) value: Constant,
     pub(crate) type_comment: String,
 }
+#[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq)]
 pub enum DataType {
     Int(i64),
@@ -39,6 +42,7 @@ pub enum DataType {
     List(Vec<DataType>),
     None,
 }
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct Constant {
     pub(crate) value: DataType,
@@ -53,49 +57,7 @@ impl Constant {
         };
     }
 }
-
-// This is a temporary implementation
-// Will be rewritten in the future
-impl Add for Constant {
-    type Output = Constant;
-
-    fn add(self, rhs: Self) -> Self::Output {
-        Constant {
-            value: self.value + rhs.value,
-            type_comment: "".to_string(),
-        }
-    }
-}
-impl Sub for Constant {
-    type Output = Constant;
-
-    fn sub(self, rhs: Self) -> Self::Output {
-        Constant {
-            value: self.value - rhs.value,
-            type_comment: "".to_string(),
-        }
-    }
-}
-impl Mul for Constant {
-    type Output = Constant;
-
-    fn mul(self, rhs: Self) -> Self::Output {
-        Constant {
-            value: self.value * rhs.value,
-            type_comment: "".to_string(),
-        }
-    }
-}
-impl Div for Constant {
-    type Output = Constant;
-
-    fn div(self, rhs: Self) -> Self::Output {
-        Constant {
-            value: self.value / rhs.value,
-            type_comment: "".to_string(),
-        }
-    }
-}
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub enum Operator {
     Add,
@@ -160,6 +122,7 @@ macro_rules! generate_op_fn {
 pub trait Calc {
     fn calc(&mut self) -> Constant;
 }
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct BinOp {
     pub left: Box<Type>,
@@ -193,10 +156,14 @@ fn deref_expression(data: Type) -> Constant {
 }
 impl Calc for BinOp {
     fn calc(&mut self) -> Constant {
+        todo!()
+        /*
         let _x: Constant = deref_expression(*self.left.clone()).clone();
         let mut _y: Constant = deref_expression(*self.right.clone()).clone();
         println!("{:?} {:?} {:?}", _x, _y, self.op.clone());
         generate_op_fn!(self.op.clone())(_x, _y)
+
+         */
     }
 }
 #[derive(Debug, Clone)]
@@ -277,7 +244,7 @@ impl Calc for UnaryOp {
         }
     }
 }
-
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct BoolOp {
     pub op: Operator,

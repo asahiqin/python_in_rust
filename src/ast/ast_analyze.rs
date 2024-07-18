@@ -16,6 +16,7 @@ pub struct TokenIter {
     vec_token: Vec<Token>,
 }
 
+#[allow(dead_code)]
 fn throw_error(line: usize, col_offset: usize, message: &str) {
     panic!("[{}:{}]Error:{}", line + 1, col_offset + 1, message)
 }
@@ -89,7 +90,7 @@ impl TokenIter {
         }
         false
     }
-    fn consume(&mut self, token_type: TokenType, err: String) -> Result<Token, String> {
+    fn consume(&mut self, token_type: TokenType, _err: String) -> Result<Token, String> {
         println!("{:?}", self.peek());
         self.advance();
         if self.check(token_type) {
@@ -102,6 +103,7 @@ impl TokenIter {
         ))
     }
 }
+#[allow(dead_code)]
 #[derive(Debug)]
 pub struct Parser {
     ast_list: ASTNode,
@@ -123,6 +125,7 @@ pub(crate) fn build_parser(scanner: Scanner) -> Parser {
         token_iter: TokenIter::new(scanner.token),
     };
 }
+
 impl Parser {
     pub fn parser(&mut self) -> Type {
         println!("{:?}", self.expression());
@@ -279,6 +282,7 @@ impl Parser {
             }
         }
     }
+    #[allow(dead_code)]
     fn synchronize(&mut self) -> bool {
         self.token_iter.advance();
         while !self.token_iter.is_at_end() {

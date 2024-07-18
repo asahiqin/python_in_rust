@@ -1,6 +1,5 @@
 extern crate core;
 
-use crate::test::test;
 mod ast;
 mod test;
 mod tools;
@@ -8,6 +7,7 @@ pub mod shadow {
     include!(concat!(env!("OUT_DIR"), "/shadow.rs"));
 }
 use clap::Parser;
+use crate::test::test;
 
 #[derive(Parser)]
 #[command(name = "python")]
@@ -25,7 +25,7 @@ fn main() {
         shadow::BUILD_OS
     );
     println!("{}", detail_version);
-    let mut cli = Cli::parse();
+    let _cli = Cli::parse();
 
     test()
 }
