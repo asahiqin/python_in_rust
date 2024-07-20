@@ -1,3 +1,7 @@
+use std::ops::Add;
+use crate::ast::data_type::core_type::obj_int;
+use crate::ast::data_type::object::{ObjAttr, Object, PyResult};
+
 #[allow(dead_code)]
 #[derive(Debug)]
 pub struct ASTNode {
@@ -45,12 +49,12 @@ pub enum DataType {
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct Constant {
-    pub(crate) value: DataType,
+    pub(crate) value: Object,
     pub(crate) type_comment: String,
 }
 
 impl Constant {
-    pub(crate) fn new(value: DataType) -> Constant {
+    pub(crate) fn new(value: Object) -> Constant {
         return Constant {
             value,
             type_comment: "".to_string(),
@@ -83,40 +87,6 @@ pub enum Operator {
     IsNot,
     And,
     Or,
-}
-
-#[macro_export]
-macro_rules! generate_op_fn {
-    ($op: expr) => {{
-        let op: Operator = $op;
-        match op {
-            Operator::Add => {
-                fn add<T: Add<Output = T>>(x: T, y: T) -> T {
-                    x + y
-                }
-                add
-            }
-            Operator::Sub => {
-                fn sub<T: Sub<Output = T>>(x: T, y: T) -> T {
-                    x - y
-                }
-                sub
-            }
-            Operator::Mult => {
-                fn mult<T: Mul<Output = T>>(x: T, y: T) -> T {
-                    x * y
-                }
-                mult
-            }
-            Operator::Div => {
-                fn div<T: Div<Output = T>>(x: T, y: T) -> T {
-                    x / y
-                }
-                div
-            }
-            _ => todo!(),
-        }
-    }};
 }
 
 pub trait Calc {
@@ -156,14 +126,51 @@ fn deref_expression(data: Type) -> Constant {
 }
 impl Calc for BinOp {
     fn calc(&mut self) -> Constant {
-        todo!()
-        /*
-        let _x: Constant = deref_expression(*self.left.clone()).clone();
-        let mut _y: Constant = deref_expression(*self.right.clone()).clone();
-        println!("{:?} {:?} {:?}", _x, _y, self.op.clone());
-        generate_op_fn!(self.op.clone())(_x, _y)
-
-         */
+        let mut x: Object = deref_expression(*self.left.clone()).clone().value;
+        let y: Object = deref_expression(*self.right.clone()).clone().value;
+        match self.op.clone() {
+            Operator::Add => {
+                let hashmap = x.convert_vec_to_hashmap(
+                    "__add__".to_string(),
+                    vec![ObjAttr::Interpreter(Box::from(y))],
+                );
+                match x.add(hashmap) {
+                    PyResult::Some(x) => Constant::new(x),
+                    _ => panic!(),
+                }
+            }
+            Operator::Sub => {
+                let hashmap = x.convert_vec_to_hashmap(
+                    "__sub__".to_string(),
+                    vec![ObjAttr::Interpreter(Box::from(y))],
+                );
+                match x.sub(hashmap) {
+                    PyResult::Some(x) => Constant::new(x),
+                    _ => panic!(),
+                }
+            }
+            Operator::Mult => {
+                let hashmap = x.convert_vec_to_hashmap(
+                    "__mult__".to_string(),
+                    vec![ObjAttr::Interpreter(Box::from(y))],
+                );
+                match x.mul(hashmap) {
+                    PyResult::Some(x) => Constant::new(x),
+                    _ => panic!(),
+                }
+            }
+            Operator::Div => {
+                let hashmap = x.convert_vec_to_hashmap(
+                    "__div__".to_string(),
+                    vec![ObjAttr::Interpreter(Box::from(y))],
+                );
+                match x.div(hashmap) {
+                    PyResult::Some(x) => Constant::new(x),
+                    _ => panic!(),
+                }
+            }
+            _ => { todo!() }
+        }
     }
 }
 #[derive(Debug, Clone)]
@@ -184,64 +191,9 @@ pub struct UnaryOp {
     pub op: Operator,
     pub operand: Box<Type>,
 }
-
-impl Calc for UnaryOp {
+impl Calc for UnaryOp{
     fn calc(&mut self) -> Constant {
-        let _x: Constant = deref_expression(*self.operand.clone()).clone();
-        match self.op {
-            Operator::UAdd => {
-                return match _x.value {
-                    DataType::Bool(x) => Constant {
-                        value: DataType::Bool(x),
-                        type_comment: "".to_string(),
-                    },
-                    DataType::Int(x) => Constant {
-                        value: DataType::Int(x),
-                        type_comment: "".to_string(),
-                    },
-                    DataType::Float(x) => Constant {
-                        value: DataType::Float(x),
-                        type_comment: "".to_string(),
-                    },
-                    _ => panic!("Unsupported operate"),
-                }
-            }
-            Operator::USub => {
-                return match _x.value {
-                    DataType::Bool(x) => Constant {
-                        value: DataType::Int(if x { -1 } else { 0 }),
-                        type_comment: "".to_string(),
-                    },
-                    DataType::Int(x) => Constant {
-                        value: DataType::Int(-x),
-                        type_comment: "".to_string(),
-                    },
-                    DataType::Float(x) => Constant {
-                        value: DataType::Float(-x),
-                        type_comment: "".to_string(),
-                    },
-                    _ => panic!("Unsupported operate"),
-                }
-            }
-            Operator::Not => {
-                return match _x.value {
-                    DataType::Bool(x) => Constant {
-                        value: DataType::Bool(!x),
-                        type_comment: "".to_string(),
-                    },
-                    DataType::Int(x) => Constant {
-                        value: DataType::Bool(if x != 0 { true } else { false }),
-                        type_comment: "".to_string(),
-                    },
-                    DataType::Float(x) => Constant {
-                        value: DataType::Bool(if x != 0.0 { true } else { false }),
-                        type_comment: "".to_string(),
-                    },
-                    _ => panic!("Unsupported operate"),
-                }
-            }
-            _ => panic!("Unsupported operator"),
-        }
+        todo!()
     }
 }
 #[allow(dead_code)]

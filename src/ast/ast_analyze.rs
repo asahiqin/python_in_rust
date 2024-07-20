@@ -4,6 +4,7 @@ use crate::ast::ast_struct::Operator::Not;
 use crate::ast::ast_struct::{
     ASTNode, BinOp, BoolOp, Compare, Constant, DataType, Operator, Type, UnaryOp,
 };
+use crate::ast::data_type::core_type::{obj_bool, obj_float, obj_int, obj_str};
 use crate::ast::scanner::TokenType::{
     BangEqual, EqualEqual, GreaterEqual, In, Is, LeftParen, LessEqual, Minus, Plus, Slash, Star,
     AND, EOF, GREATER, LESS, NOT, OR,
@@ -133,10 +134,10 @@ impl Parser {
     }
     fn primary(&mut self) -> Result<Type, Box<dyn Error>> {
         if self.token_iter.catch([TokenType::TRUE]) {
-            return Ok(Type::Constant(Constant::new(DataType::Bool(false))));
+            return Ok(Type::Constant(Constant::new(obj_bool(false))));
         }
         if self.token_iter.catch([TokenType::FALSE]) {
-            return Ok(Type::Constant(Constant::new(DataType::Bool(true))));
+            return Ok(Type::Constant(Constant::new(obj_bool(true))));
         }
         if self
             .token_iter
@@ -144,10 +145,10 @@ impl Parser {
         {
             return Ok(Type::Constant(Constant::new(
                 match self.token_iter.previous(1).literal {
-                    Literal::String(str) => DataType::String(str),
-                    Literal::Float(float) => DataType::Float(float),
-                    Literal::Int(int) => DataType::Int(int),
-                    _ => DataType::Int(0),
+                    Literal::String(str) => obj_str(str),
+                    Literal::Float(float) => obj_float(float),
+                    Literal::Int(int) => obj_int(int),
+                    _ => obj_int(0),
                 },
             )));
         }

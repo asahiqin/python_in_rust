@@ -1,7 +1,6 @@
 use crate::ast::ast_analyze::build_parser;
-use crate::ast::ast_struct::{BinOp, Calc, Constant, DataType, Operator, Type};
-use crate::ast::data_type::inter_type::obj_int;
-use crate::ast::data_type::object::ObjAttr;
+use crate::ast::ast_struct::{BinOp, Calc, Constant, Operator, Type};
+use crate::ast::data_type::core_type::{obj_bool, obj_int, obj_str};
 use crate::ast::scanner::build_scanner;
 
 #[test]
@@ -10,28 +9,6 @@ fn test_scanner() {
     let mut scanner = build_scanner(source);
     scanner.scan();
     println!("{:?}", scanner.token);
-}
-#[test]
-fn test_rust() {
-    let mut op = BinOp {
-        left: Box::new(Type::Constant(Constant {
-            value: DataType::Int(1),
-            type_comment: "".to_string(),
-        })),
-        op: Operator::Add,
-        right: Box::new(Type::BinOp(BinOp {
-            left: Box::new(Type::Constant(Constant {
-                value: DataType::Int(3),
-                type_comment: "".to_string(),
-            })),
-            op: Operator::Mult,
-            right: Box::new(Type::Constant(Constant {
-                value: DataType::Int(2),
-                type_comment: "".to_string(),
-            })),
-        })),
-    };
-    println!("{:?}", op.calc());
 }
 #[test]
 fn test_parser() {
@@ -53,10 +30,10 @@ pub fn test() {
 
 #[test]
 fn test_object() {
-    let mut a = obj_int(1);
-    let hashmap = a.convert_vec_to_hashmap(
-        "__add__".to_string(),
-        vec![ObjAttr::Interpreter(Box::from(obj_int(2)))],
-    );
-    println!("{:?}", a.add(hashmap));
+    let mut bin = BinOp{
+        left: Box::new(Type::Constant(Constant::new(obj_str("true".to_string())))),
+        op: Operator::Mult,
+        right: Box::new(Type::Constant(Constant::new(obj_int(2)))),
+    };
+    println!("{:?}", bin.calc())
 }

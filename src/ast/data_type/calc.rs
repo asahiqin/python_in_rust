@@ -34,7 +34,7 @@ impl DataType {
             DataType::None => Err(std::fmt::Error.into()),
         }
     }
-    fn sub(self, rhs: Self) -> Result<DataType, Box<dyn Error>> {
+    pub(crate) fn sub(self, rhs: Self) -> Result<DataType, Box<dyn Error>> {
         match self {
             DataType::Int(x) => match rhs {
                 DataType::Int(y) => Ok(DataType::Int(x - y)),
@@ -65,7 +65,7 @@ impl DataType {
             _ => Err(std::fmt::Error.into()),
         }
     }
-    fn mul(self, rhs: Self) -> Result<DataType, Box<dyn Error>> {
+    pub(crate) fn mul(self, rhs: Self) -> Result<DataType, Box<dyn Error>> {
         match self {
             DataType::Int(x) => match rhs {
                 DataType::Int(y) => Ok(DataType::Int(x * y)),
@@ -103,7 +103,7 @@ impl DataType {
             DataType::None => Err(std::fmt::Error.into()),
         }
     }
-    fn div(self, rhs: Self) -> Result<DataType, Box<dyn Error>> {
+    pub(crate) fn div(self, rhs: Self) -> Result<DataType, Box<dyn Error>> {
         match self {
             DataType::Int(x) => match rhs {
                 DataType::Int(y) => Ok(DataType::Float(x as f64 / y as f64)),

@@ -1,5 +1,5 @@
 use crate::ast::ast_struct::DataType;
-use crate::ast::data_type::inter_type::int_behaviour;
+use crate::ast::data_type::core_type::{bool_behaviour, float_behaviour, int_behaviour, str_behaviour};
 use std::collections::HashMap;
 
 #[derive(Clone, Debug)]
@@ -12,7 +12,10 @@ impl RustObjBehavior {
     fn exec(&self, x: HashMap<String, ObjAttr>) -> PyResult {
         match self.name.as_str() {
             "int" => int_behaviour(self.method.clone(), x),
-            _ => todo!(),
+            "float" => float_behaviour(self.method.clone(), x),
+            "bool" => bool_behaviour(self.method.clone(), x),
+            "str" => str_behaviour(self.method.clone(), x),
+            _ => todo!()
         }
     }
 }
@@ -43,7 +46,7 @@ impl Default for Object {
             (String::from("__add__"), ObjBehaviors::None),
             (String::from("__sub__"), ObjBehaviors::None),
             (String::from("__div__"), ObjBehaviors::None),
-            (String::from("__mul__"), ObjBehaviors::None),
+            (String::from("__mult__"), ObjBehaviors::None),
         ];
         let default_behavior: HashMap<String, ObjBehaviors> =
             default_method_vec.into_iter().collect();
@@ -200,6 +203,15 @@ impl Object {
     }
     pub fn add(&mut self, other: HashMap<String, ObjAttr>) -> PyResult {
         self.call(String::from("__add__"), other)
+    }
+    pub fn sub(&mut self, other: HashMap<String, ObjAttr>) -> PyResult {
+        self.call(String::from("__sub__"), other)
+    }
+    pub fn mul(&mut self, other: HashMap<String, ObjAttr>) -> PyResult {
+        self.call(String::from("__mult__"), other)
+    }
+    pub fn div(&mut self, other: HashMap<String, ObjAttr>) -> PyResult {
+        self.call(String::from("__div__"), other)
     }
 }
 

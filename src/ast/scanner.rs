@@ -1,12 +1,12 @@
 use std::collections::HashMap;
 
-use crate::{count_char_occurrences, strip_quotes};
 use crate::ast::scanner::TokenType::{
-    AND, BANG, BangEqual, CLASS, COLON, Comma, DEF, Dot, ELSE, EQUAL,
-    EqualEqual, ExactDivision, FALSE, FOR, GREATER, GreaterEqual, IDENTIFIER, IF, In, Is, LAMBDA, LeftBrace,
-    LeftParen, LESS, LessEqual, Minus, Mod, NOT, NUMBER, OR, Plus, Pow, RETURN, RightBrace, RightParen, Semicolon,
-    Slash, SPACE, Star, STRING, TAB, TRUE, WHILE,
+    BangEqual, Comma, Dot, EqualEqual, ExactDivision, GreaterEqual, In, Is, LeftBrace, LeftParen,
+    LessEqual, Minus, Mod, Plus, Pow, RightBrace, RightParen, Semicolon, Slash, Star, AND, BANG,
+    CLASS, COLON, DEF, ELSE, EQUAL, FALSE, FOR, GREATER, IDENTIFIER, IF, LAMBDA, LESS, NOT, NUMBER,
+    OR, RETURN, SPACE, STRING, TAB, TRUE, WHILE,
 };
+use crate::{count_char_occurrences, strip_quotes};
 #[allow(dead_code)]
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum TokenType {

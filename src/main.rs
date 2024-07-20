@@ -1,3 +1,4 @@
+#![feature(let_chains)]
 extern crate core;
 
 mod ast;
@@ -6,8 +7,8 @@ mod tools;
 pub mod shadow {
     include!(concat!(env!("OUT_DIR"), "/shadow.rs"));
 }
-use clap::Parser;
 use crate::test::test;
+use clap::Parser;
 
 #[derive(Parser)]
 #[command(name = "python")]
