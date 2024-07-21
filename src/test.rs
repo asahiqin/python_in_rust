@@ -1,6 +1,7 @@
 use crate::ast::ast_analyze::build_parser;
-use crate::ast::ast_struct::{BinOp, Calc, Constant, Operator, Type};
+use crate::ast::ast_struct::{BinOp, Calc, Constant, DataType, Operator, Type};
 use crate::ast::data_type::core_type::{obj_bool, obj_int, obj_str};
+use crate::ast::data_type::data_type_calc::CompareResult;
 use crate::ast::scanner::build_scanner;
 
 #[test]
@@ -36,4 +37,9 @@ fn test_object() {
         right: Box::new(Type::Constant(Constant::new(obj_int(2)))),
     };
     println!("{:?}", bin.calc())
+}
+
+#[test]
+fn test_data_type(){
+    assert_eq!(DataType::String("abc".to_string()).cmp(DataType::String("ab".to_string())).unwrap(), CompareResult::Great);
 }

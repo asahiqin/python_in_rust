@@ -1,5 +1,12 @@
 use crate::ast::ast_struct::DataType;
 use std::error::Error;
+
+#[derive(Debug,Clone,Eq, PartialEq)]
+pub enum CompareResult{
+    Great,
+    Equal,
+    Less
+}
 #[allow(dead_code)]
 impl DataType {
     // Calc
@@ -25,10 +32,6 @@ impl DataType {
             },
             DataType::String(x) => match rhs {
                 DataType::String(y) => Ok(DataType::String(format!("{}{}", x, y))),
-                _ => Err(std::fmt::Error.into()),
-            },
-            DataType::List(x) => match rhs {
-                DataType::List(y) => Ok(DataType::List([x, y].concat())),
                 _ => Err(std::fmt::Error.into()),
             },
             DataType::None => Err(std::fmt::Error.into()),
@@ -89,17 +92,6 @@ impl DataType {
                 DataType::Int(y) => Ok(DataType::String(x.repeat(y as usize))),
                 _ => Err(std::fmt::Error.into()),
             },
-            DataType::List(x) => match rhs {
-                DataType::Int(y) => {
-                    let i: i64 = 0;
-                    let mut vec = x.clone();
-                    while i < y {
-                        vec = [vec, x.clone()].concat()
-                    }
-                    Ok(DataType::List(vec))
-                }
-                _ => Err(std::fmt::Error.into()),
-            },
             DataType::None => Err(std::fmt::Error.into()),
         }
     }
@@ -138,6 +130,135 @@ impl DataType {
                 _ => Err(std::fmt::Error.into()),
             },
             _ => Err(std::fmt::Error.into()),
+        }
+    }
+    pub fn cmp(self, rhs:Self) -> Result<CompareResult, Box<dyn Error>>{
+        match self {
+            DataType::Int(x) => {
+                match rhs {
+                    DataType::Int(y) => {
+                        if x == y {
+                            Ok(CompareResult::Equal)
+                        } else if x < y  {
+                            Ok(CompareResult::Less)
+                        } else {
+                            Ok(CompareResult::Great)
+                        }
+                    }
+                    DataType::Float(y) => {
+                        if x as f64 == y {
+                            Ok(CompareResult::Equal)
+                        } else if (x as f64) < y  {
+                            Ok(CompareResult::Less)
+                        } else {
+                            Ok(CompareResult::Great)
+                        }
+                    }
+                    DataType::Bool(y) => {
+                        if x == if y {1} else {0} {
+                            Ok(CompareResult::Equal)
+                        } else if x < if y {1} else {0}  {
+                            Ok(CompareResult::Less)
+                        } else {
+                            Ok(CompareResult::Great)
+                        }
+                    }
+                    _ => Err(std::fmt::Error.into())
+                }
+            }
+            DataType::Float(x) => {
+                match rhs {
+                    DataType::Int(y) => {
+                        if x == y as f64 {
+                            Ok(CompareResult::Equal)
+                        } else if x < y as f64  {
+                            Ok(CompareResult::Less)
+                        } else {
+                            Ok(CompareResult::Great)
+                        }
+                    }
+                    DataType::Float(y) => {
+                        if x == y {
+                            Ok(CompareResult::Equal)
+                        } else if (x as f64) < y  {
+                            Ok(CompareResult::Less)
+                        } else {
+                            Ok(CompareResult::Great)
+                        }
+                    }
+                    DataType::Bool(y) => {
+                        if x == if y {1.0} else {0.0} {
+                            Ok(CompareResult::Equal)
+                        } else if x < if y {1.0} else {0.0}  {
+                            Ok(CompareResult::Less)
+                        } else {
+                            Ok(CompareResult::Great)
+                        }
+                    }
+                    _ => Err(std::fmt::Error.into())
+                }
+            }
+            DataType::Bool(x) => {
+                match rhs {
+                    DataType::Int(y) => {
+                        if if x {1} else {0} == y {
+                            Ok(CompareResult::Equal)
+                        } else if if x {1} else {0} <y  {
+                            Ok(CompareResult::Less)
+                        } else {
+                            Ok(CompareResult::Great)
+                        }
+                    }
+                    DataType::Float(y) => {
+                        if if x {1.0} else {0.0} == y {
+                            Ok(CompareResult::Equal)
+                        } else if if x {1.0} else {0.0} < y  {
+                            Ok(CompareResult::Less)
+                        } else {
+                            Ok(CompareResult::Great)
+                        }
+                    }
+                    DataType::Bool(y) => {
+                        if if x {1} else {0} == if y {1} else {0}  {
+                            Ok(CompareResult::Equal)
+                        } else if if x {1} else {0} < if y {1} else {0}  {
+                            Ok(CompareResult::Less)
+                        } else {
+                            Ok(CompareResult::Great)
+                        }
+                    }
+                    _ => Err(std::fmt::Error.into())
+                }
+            }
+            DataType::String(x) => {
+                let x_ascii = x.into_bytes();
+                match rhs {
+                    DataType::String(y) => {
+                        let y_ascii = y.into_bytes();
+                        for (index,item) in x_ascii.iter().enumerate(){
+                            if item.clone() > y_ascii[index]{
+                                return Ok(CompareResult::Great)
+                            }else if item.clone() < y_ascii[index] {
+                                return Ok(CompareResult::Less)
+                            }
+                            if index + 2 > y_ascii.len() {
+                                return if x_ascii.len() != y_ascii.len() {
+                                    Ok(CompareResult::Great)
+                                } else {
+                                    Ok(CompareResult::Equal)
+                                }
+                            }
+                        }
+                        return if x_ascii.len() != y_ascii.len() {
+                            Ok(CompareResult::Less)
+                        } else {
+                            Ok(CompareResult::Equal)
+                        }
+                    }
+                    _ => Err(std::fmt::Error.into())
+                }
+            }
+            _ => Err(std::fmt::Error.into())
         }
     }
 }

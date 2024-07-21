@@ -43,7 +43,6 @@ pub enum DataType {
     Float(f64),
     Bool(bool),
     String(String),
-    List(Vec<DataType>),
     None,
 }
 #[allow(dead_code)]
