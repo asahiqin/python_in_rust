@@ -1,7 +1,8 @@
 use crate::ast::ast_analyze::build_parser;
-use crate::ast::ast_struct::{BinOp, Calc, Constant, DataType, Operator, Type};
-use crate::ast::data_type::core_type::{obj_bool, obj_int, obj_str};
+use crate::ast::ast_struct::{Calc, Compare, Constant, DataType, Operator, Type};
+use crate::ast::data_type::core_type::{obj_float, obj_int};
 use crate::ast::data_type::data_type_calc::CompareResult;
+use crate::ast::data_type::object::{ObjAttr, PyResult};
 use crate::ast::scanner::build_scanner;
 
 #[test]
@@ -30,13 +31,13 @@ pub fn test() {
 }
 
 #[test]
-fn test_object() {
-    let mut bin = BinOp{
-        left: Box::new(Type::Constant(Constant::new(obj_str("true".to_string())))),
-        op: Operator::Mult,
-        right: Box::new(Type::Constant(Constant::new(obj_int(2)))),
+fn test_object_compare() {
+    let mut bin = Compare{
+        left: Box::new(Type::Constant(Constant::new(obj_int(1)))),
+        ops: vec![Operator::Eq,Operator::LtE,Operator::Gt],
+        comparators: Box::new(vec![Type::Constant(Constant::new(obj_int(1))),Type::Constant(Constant::new(obj_int(2))),Type::Constant(Constant::new(obj_float(-1.0)))]),
     };
-    println!("{:?}", bin.calc())
+    assert_eq!(bin.calc().value.get_value("x".to_string()).unwrap(),ObjAttr::Rust(DataType::Bool(true)))
 }
 
 #[test]

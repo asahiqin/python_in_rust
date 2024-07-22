@@ -34,7 +34,7 @@ impl DataType {
                 DataType::String(y) => Ok(DataType::String(format!("{}{}", x, y))),
                 _ => Err(std::fmt::Error.into()),
             },
-            DataType::None => Err(std::fmt::Error.into()),
+            _ => Err(std::fmt::Error.into()),
         }
     }
     pub(crate) fn sub(self, rhs: Self) -> Result<DataType, Box<dyn Error>> {
@@ -92,7 +92,7 @@ impl DataType {
                 DataType::Int(y) => Ok(DataType::String(x.repeat(y as usize))),
                 _ => Err(std::fmt::Error.into()),
             },
-            DataType::None => Err(std::fmt::Error.into()),
+            _ => Err(std::fmt::Error.into()),
         }
     }
     pub(crate) fn div(self, rhs: Self) -> Result<DataType, Box<dyn Error>> {

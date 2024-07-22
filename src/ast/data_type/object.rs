@@ -1,8 +1,9 @@
 use crate::ast::ast_struct::DataType;
 use crate::ast::data_type::core_type::{bool_behaviour, float_behaviour, int_behaviour, str_behaviour};
 use std::collections::HashMap;
+use std::error::Error;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct RustObjBehavior {
     pub name: String,
     pub method: String,
@@ -20,20 +21,20 @@ impl RustObjBehavior {
     }
 }
 #[allow(dead_code)]
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub(crate) enum ObjBehaviors {
     Interpreter,
     Rust(Box<RustObjBehavior>),
     None,
 }
 #[allow(dead_code)]
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum ObjAttr {
     Interpreter(Box<Object>),
     Rust(DataType),
     None,
 }
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Object {
     pub(crate) attr: HashMap<String, ObjAttr>,
     behaviors: HashMap<String, ObjBehaviors>,
@@ -97,6 +98,16 @@ pub enum PyResult {
 }
 #[allow(dead_code)]
 impl Object {
+    pub fn get_value(&self, key:String) -> Result<ObjAttr, Box<dyn Error>>{
+        match self.attr.get(&key) {
+            None => {
+                Err(std::fmt::Error.into())
+            }
+            Some(x) => {
+                Ok(x.clone())
+            }
+        }
+    }
     fn inner_call(&self, behavior: String, other: HashMapAttr) -> PyResult {
         match self.behaviors.get(&behavior) {
             None => PyResult::Err,
@@ -212,6 +223,24 @@ impl Object {
     }
     pub fn div(&mut self, other: HashMap<String, ObjAttr>) -> PyResult {
         self.call(String::from("__div__"), other)
+    }
+    pub fn lt(&mut self, other: HashMap<String, ObjAttr>) -> PyResult {
+        self.call(String::from("__lt__"), other)
+    }
+    pub fn gt(&mut self, other: HashMap<String, ObjAttr>) -> PyResult {
+        self.call(String::from("__gt__"), other)
+    }
+    pub fn py_eq(&mut self, other: HashMap<String, ObjAttr>) -> PyResult {
+        self.call(String::from("__eq__"), other)
+    }
+    pub fn py_ne(&mut self, other: HashMap<String, ObjAttr>) -> PyResult {
+        self.call(String::from("__ne__"), other)
+    }
+    pub fn ge(&mut self, other: HashMap<String, ObjAttr>) -> PyResult {
+        self.call(String::from("__ge__"), other)
+    }
+    pub fn le(&mut self, other: HashMap<String, ObjAttr>) -> PyResult {
+        self.call(String::from("__le__"), other)
     }
 }
 

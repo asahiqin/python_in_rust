@@ -5,6 +5,7 @@ use crate::ast::data_type::object::{
 use crate::define_obj_method;
 use std::collections::HashMap;
 use std::error::Error;
+use crate::ast::data_type::data_type_calc::CompareResult;
 
 fn build_rust_method(name: String, method: String, args: Vec<String>) -> (String, ObjBehaviors) {
     (
@@ -73,6 +74,13 @@ macro_rules! build_method {
             build_rust_method(name.clone(), String::from("__sub__"), param.clone()),
             build_rust_method(name.clone(), String::from("__mult__"), param.clone()),
             build_rust_method(name.clone(), String::from("__div__"), param.clone()),
+            build_rust_method(name.clone(), String::from("__eq__"), param.clone()),
+            build_rust_method(name.clone(), String::from("__lt__"), param.clone()),
+            build_rust_method(name.clone(), String::from("__gt__"), param.clone()),
+            build_rust_method(name.clone(), String::from("__ne__"), param.clone()),
+            build_rust_method(name.clone(), String::from("__le__"), param.clone()),
+            build_rust_method(name.clone(), String::from("__ge__"), param.clone()),
+
         ];
         let int_behavior: HashMap<String, ObjBehaviors> = int_method_vec.into_iter().collect();
         Object::default()
@@ -83,7 +91,7 @@ macro_rules! build_method {
 }
 
 fn custom_behaviour(obj_x:DataType, method: String, args: HashMapAttr) -> PyResult{
-    let method_vec = ["__add__", "__sub__","__mult__","__div__"];
+    let method_vec = ["__add__", "__sub__","__mult__","__div__","__lt__","__gt__","__eq__","__ne__","__le__","__ge__"];
     if method_vec.map(|x| return x == method.clone()).iter().filter(|x| **x).count() == 1 {
         let other = get_attr_until_rust(
             get_from_hashmap("other".parse().unwrap(), args),
@@ -117,6 +125,84 @@ fn custom_behaviour(obj_x:DataType, method: String, args: HashMapAttr) -> PyResu
             return PyResult::Some(
                 match obj_x.div(other){
                     Ok(x) => data_type_to_obj(x.clone()),
+                    Err(_) => { panic!("Cannot Calc")}
+                }
+            )
+        });
+        define_obj_method!(method method;identity "__lt__";content {
+            return PyResult::Some(
+                match obj_x.cmp(other){
+                    Ok(x) => {
+                        match x {
+                            CompareResult::Less => obj_bool(true),
+                            _ => obj_bool(false)
+                        }
+                    }
+                    Err(_) => { panic!("Cannot Calc")}
+                }
+            )
+        });
+        define_obj_method!(method method;identity "__gt__";content {
+            return PyResult::Some(
+                match obj_x.cmp(other){
+                    Ok(x) => {
+                        match x {
+                            CompareResult::Great => obj_bool(true),
+                            _ => obj_bool(false)
+                        }
+                    }
+                    Err(_) => { panic!("Cannot Compare")}
+                }
+            )
+        });
+        define_obj_method!(method method;identity "__ne__";content {
+            return PyResult::Some(
+                match obj_x.cmp(other){
+                    Ok(x) => {
+                        match x {
+                            CompareResult::Equal => obj_bool(false),
+                            _ => obj_bool(true)
+                        }
+                    }
+                    Err(_) => { panic!("Cannot Calc")}
+                }
+            )
+        });
+        define_obj_method!(method method;identity "__eq__";content {
+            return PyResult::Some(
+                match obj_x.cmp(other){
+                    Ok(x) => {
+                        match x {
+                            CompareResult::Equal => obj_bool(true),
+                            _ => obj_bool(true)
+                        }
+                    }
+                    Err(_) => { panic!("Cannot Calc")}
+                }
+            )
+        });
+        define_obj_method!(method method;identity "__ge__";content {
+            return PyResult::Some(
+                match obj_x.cmp(other){
+                    Ok(x) => {
+                        match x {
+                            CompareResult::Less => obj_bool(false),
+                            _ => obj_bool(true)
+                        }
+                    }
+                    Err(_) => { panic!("Cannot Calc")}
+                }
+            )
+        });
+        define_obj_method!(method method;identity "__le__";content {
+            return PyResult::Some(
+                match obj_x.cmp(other){
+                    Ok(x) => {
+                        match x {
+                            CompareResult::Great => obj_bool(false),
+                            _ => obj_bool(true)
+                        }
+                    }
                     Err(_) => { panic!("Cannot Calc")}
                 }
             )
@@ -197,4 +283,12 @@ pub fn bool_behaviour(method: String, args: HashMapAttr) -> PyResult {
         _ => {}
     }
     PyResult::None
+}
+
+pub fn obj_list(x: Vec<Object>) -> Object{
+    build_method!(
+        name:"bool".to_string();
+        param:vec!["self".to_string(),"other".to_string()];
+        data:DataType::List(Box::from(x))
+    )
 }

@@ -1,5 +1,6 @@
+use std::error::Error;
 use std::ops::Add;
-use crate::ast::data_type::core_type::obj_int;
+use crate::ast::data_type::core_type::obj_bool;
 use crate::ast::data_type::object::{ObjAttr, Object, PyResult};
 
 #[allow(dead_code)]
@@ -43,6 +44,7 @@ pub enum DataType {
     Float(f64),
     Bool(bool),
     String(String),
+    List(Box<Vec<Object>>),
     None,
 }
 #[allow(dead_code)]
@@ -178,10 +180,112 @@ pub struct Compare {
     pub(crate) ops: Vec<Operator>,
     pub(crate) comparators: Box<Vec<Type>>,
 }
+impl Compare{
+    fn get_from_bool_obj(x:Object) -> bool{
+        match x.get_value("x".to_string()) {
+            Ok(x) => {
+                match x {
+                    ObjAttr::Rust(y) => {
+                        match y  {
+                            DataType::Bool(x) => {
+                                return x
+                            }
+                            _ => panic!("Not bool object")
+                        }
+                    }
+                    _ => panic!()
+                }
+            }
+            Err(_) => {
+                panic!()
+            }
+        }
+    }
+    fn compare(operator: Operator, mut left: Object, right: Object) -> bool{
+        match operator {
+            Operator::Eq => {
+                let hashmap = left.convert_vec_to_hashmap(
+                    "__eq__".to_string(),
+                    vec![ObjAttr::Interpreter(Box::from(right))],
+                );
+                match left.py_eq(hashmap) {
+                    PyResult::Some(x) => Self::get_from_bool_obj(x),
+                    _ => panic!(),
+                }
+            }
+            Operator::NotEq => {
+                let hashmap = left.convert_vec_to_hashmap(
+                    "__ne__".to_string(),
+                    vec![ObjAttr::Interpreter(Box::from(right))],
+                );
+                match left.py_ne(hashmap) {
+                    PyResult::Some(x) => Self::get_from_bool_obj(x),
+                    _ => panic!(),
+                }
+            }
+            Operator::Lt => {
+                let hashmap = left.convert_vec_to_hashmap(
+                    "__lt__".to_string(),
+                    vec![ObjAttr::Interpreter(Box::from(right))],
+                );
+                match left.lt(hashmap) {
+                    PyResult::Some(x) => Self::get_from_bool_obj(x),
+                    _ => panic!(),
+                }
+            }
+            Operator::Gt => {
+                let hashmap = left.convert_vec_to_hashmap(
+                    "__gt__".to_string(),
+                    vec![ObjAttr::Interpreter(Box::from(right))],
+                );
+                match left.gt(hashmap) {
+                    PyResult::Some(x) => Self::get_from_bool_obj(x),
+                    _ => panic!(),
+                }
+            }
+            Operator::LtE => {
+                let hashmap = left.convert_vec_to_hashmap(
+                    "__le__".to_string(),
+                    vec![ObjAttr::Interpreter(Box::from(right))],
+                );
+                match left.le(hashmap) {
+                    PyResult::Some(x) => Self::get_from_bool_obj(x),
+                    _ => panic!(),
+                }
+            }
+            Operator::GtE => {
+                let hashmap = left.convert_vec_to_hashmap(
+                    "__ge__".to_string(),
+                    vec![ObjAttr::Interpreter(Box::from(right))],
+                );
+                match left.ge(hashmap) {
+                    PyResult::Some(x) => Self::get_from_bool_obj(x),
+                    _ => panic!(),
+                }
+            }
+            _ => { panic!("not a compare operator") }
+        }
+    }
 
+    fn compare_calc(&mut self) -> bool{
+        let mut comparators = vec![*self.left.clone()];
+        comparators.extend(*self.comparators.clone());
+        for (index,left) in comparators.iter().enumerate(){
+            let left = deref_expression(left.clone());
+            if index + 1 ==  comparators.len(){
+                return true
+            }
+            let right = deref_expression(comparators[index + 1].clone());
+            if Self::compare(self.ops[index].clone(),left.value,right.value) {
+                return true
+            }
+        }
+        true
+    }
+}
 impl Calc for Compare {
     fn calc(&mut self) -> Constant {
-        todo!()
+        Constant::new(obj_bool(self.compare_calc()))
     }
 }
 
