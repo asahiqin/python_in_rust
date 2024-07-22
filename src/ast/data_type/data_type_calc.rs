@@ -7,6 +7,25 @@ pub enum CompareResult {
     Equal,
     Less,
 }
+
+/**
+
+### Alright, I know this pile of code has no readability。
+So what we need to know is:the struct Datatype has five methods,and for examples:
+```
+let mut a = DataType::Int(1)
+a.add(DataType::Int(2)) // Return DataType::Int(3)
+
+let mut a = DataType::Int(1)
+a.sub(DataType::Float(2.3)) // Return DataType::Float(-1.3)
+
+let mut a = DataType::String("a".to_string())
+a.mul(DataType::Int(5)) // Return DataType::String(String::from("aaaaa"))
+```
+This converts the DataType to an appropriate type in operations
+
+But,the DataType::List is implemented in the object
+ */
 #[allow(dead_code)]
 impl DataType {
     // Calc

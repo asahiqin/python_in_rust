@@ -1,19 +1,19 @@
 use crate::ast::ast_struct::DataType;
 use crate::ast::data_type::data_type_calc::CompareResult;
 use crate::ast::data_type::object::{
-    HashMapAttr, ObjAttr, ObjBehaviors, Object, PyResult, RustObjBehavior,
+    HashMapAttr, PyObjAttr, PyObjBehaviors, PyObject, PyResult, RustObjBehavior,
 };
 use crate::define_obj_method;
 use std::collections::HashMap;
 use std::error::Error;
 
-fn build_rust_method(name: String, method: String, args: Vec<String>) -> (String, ObjBehaviors) {
+fn build_rust_method(name: String, method: String, args: Vec<String>) -> (String, PyObjBehaviors) {
     (
         method.clone(),
-        ObjBehaviors::Rust(Box::new(RustObjBehavior { name, method, args })),
+        PyObjBehaviors::Rust(Box::new(RustObjBehavior { name, method, args })),
     )
 }
-fn get_from_hashmap(name: String, args: HashMapAttr) -> ObjAttr {
+fn get_from_hashmap(name: String, args: HashMapAttr) -> PyObjAttr {
     match args.get(&name) {
         None => {
             panic!("Cannot get")
@@ -21,7 +21,7 @@ fn get_from_hashmap(name: String, args: HashMapAttr) -> ObjAttr {
         Some(x) => x.clone(),
     }
 }
-fn get_from_obj(name: String, obj: Object) -> ObjAttr {
+fn get_from_obj(name: String, obj: PyObject) -> PyObjAttr {
     match obj.attr.get(&name) {
         None => {
             panic!("Cannot get")
@@ -29,20 +29,20 @@ fn get_from_obj(name: String, obj: Object) -> ObjAttr {
         Some(x) => x.clone(),
     }
 }
-fn get_obj_until_rust(obj: Object, name: String) -> DataType {
+fn get_obj_until_rust(obj: PyObject, name: String) -> DataType {
     get_attr_until_rust(get_from_obj(name.clone(), obj), name)
 }
-fn get_attr_until_rust(attr: ObjAttr, name: String) -> DataType {
+fn get_attr_until_rust(attr: PyObjAttr, name: String) -> DataType {
     match attr {
-        ObjAttr::Interpreter(x) => return get_obj_until_rust(*x.clone(), name.clone()),
-        ObjAttr::Rust(x) => return x,
-        ObjAttr::None => {
+        PyObjAttr::Interpreter(x) => return get_obj_until_rust(*x.clone(), name.clone()),
+        PyObjAttr::Rust(x) => return x,
+        PyObjAttr::None => {
             panic!("Cannot get")
         }
     }
 }
 
-fn data_type_to_obj(x: DataType) -> Object {
+fn data_type_to_obj(x: DataType) -> PyObject {
     match x {
         DataType::Int(x) => obj_int(x),
         DataType::Float(x) => obj_float(x),
@@ -56,8 +56,8 @@ fn obj_parser(param: String, key: String, args: HashMapAttr) -> Result<DataType,
     // Get the value of the self parameter of the function
     let obj_self = get_from_hashmap(param.parse().unwrap(), args.clone());
     match obj_self {
-        ObjAttr::Interpreter(obj) => match get_from_hashmap(key.parse().unwrap(), obj.attr) {
-            ObjAttr::Rust(x) => Ok(x.clone()),
+        PyObjAttr::Interpreter(obj) => match get_from_hashmap(key.parse().unwrap(), obj.attr) {
+            PyObjAttr::Rust(x) => Ok(x.clone()),
             _ => Err(std::fmt::Error.into()),
         },
         _ => Err(std::fmt::Error.into()),
@@ -69,7 +69,7 @@ macro_rules! build_method {
         let param: Vec<String> = $param;
         let name: String = $name;
         let data: DataType = $data;
-        let int_method_vec: Vec<(String, ObjBehaviors)> = vec![
+        let int_method_vec: Vec<(String, PyObjBehaviors)> = vec![
             build_rust_method(name.clone(), String::from("__add__"), param.clone()),
             build_rust_method(name.clone(), String::from("__sub__"), param.clone()),
             build_rust_method(name.clone(), String::from("__mult__"), param.clone()),
@@ -81,10 +81,10 @@ macro_rules! build_method {
             build_rust_method(name.clone(), String::from("__le__"), param.clone()),
             build_rust_method(name.clone(), String::from("__ge__"), param.clone()),
         ];
-        let int_behavior: HashMap<String, ObjBehaviors> = int_method_vec.into_iter().collect();
-        Object::default()
+        let int_behavior: HashMap<String, PyObjBehaviors> = int_method_vec.into_iter().collect();
+        PyObject::default()
             .identity(name)
-            .attr([(String::from("x"), ObjAttr::Rust(data))])
+            .attr([(String::from("x"), PyObjAttr::Rust(data))])
             .extend_behavior(int_behavior)
     }};
 }
@@ -218,7 +218,7 @@ fn custom_behaviour(obj_x: DataType, method: String, args: HashMapAttr) -> PyRes
     }
     PyResult::None
 }
-pub fn obj_int(x: i64) -> Object {
+pub fn obj_int(x: i64) -> PyObject {
     build_method!(
         name:"int".to_string();
         param:vec!["self".to_string(),"other".to_string()];
@@ -238,7 +238,7 @@ pub fn int_behaviour(method: String, args: HashMapAttr) -> PyResult {
     PyResult::None
 }
 
-pub fn obj_float(x: f64) -> Object {
+pub fn obj_float(x: f64) -> PyObject {
     build_method!(
         name:"float".to_string();
         param:vec!["self".to_string(),"other".to_string()];
@@ -256,7 +256,7 @@ pub fn float_behaviour(method: String, args: HashMapAttr) -> PyResult {
     }
     PyResult::None
 }
-pub fn obj_str(x: String) -> Object {
+pub fn obj_str(x: String) -> PyObject {
     build_method!(
         name:"str".to_string();
         param:vec!["self".to_string(),"other".to_string()];
@@ -274,7 +274,7 @@ pub fn str_behaviour(method: String, args: HashMapAttr) -> PyResult {
     }
     PyResult::None
 }
-pub fn obj_bool(x: bool) -> Object {
+pub fn obj_bool(x: bool) -> PyObject {
     build_method!(
         name:"bool".to_string();
         param:vec!["self".to_string(),"other".to_string()];
@@ -293,7 +293,7 @@ pub fn bool_behaviour(method: String, args: HashMapAttr) -> PyResult {
     PyResult::None
 }
 
-pub fn obj_list(x: Vec<Object>) -> Object {
+pub fn obj_list(x: Vec<PyObject>) -> PyObject {
     build_method!(
         name:"bool".to_string();
         param:vec!["self".to_string(),"other".to_string()];
