@@ -1,7 +1,7 @@
-use std::error::Error;
-use std::ops::Add;
 use crate::ast::data_type::core_type::obj_bool;
 use crate::ast::data_type::object::{ObjAttr, Object, PyResult};
+use std::error::Error;
+use std::ops::Add;
 
 #[allow(dead_code)]
 #[derive(Debug)]
@@ -170,7 +170,9 @@ impl Calc for BinOp {
                     _ => panic!(),
                 }
             }
-            _ => { todo!() }
+            _ => {
+                todo!()
+            }
         }
     }
 }
@@ -180,28 +182,22 @@ pub struct Compare {
     pub(crate) ops: Vec<Operator>,
     pub(crate) comparators: Box<Vec<Type>>,
 }
-impl Compare{
-    fn get_from_bool_obj(x:Object) -> bool{
+impl Compare {
+    fn get_from_bool_obj(x: Object) -> bool {
         match x.get_value("x".to_string()) {
-            Ok(x) => {
-                match x {
-                    ObjAttr::Rust(y) => {
-                        match y  {
-                            DataType::Bool(x) => {
-                                return x
-                            }
-                            _ => panic!("Not bool object")
-                        }
-                    }
-                    _ => panic!()
-                }
-            }
+            Ok(x) => match x {
+                ObjAttr::Rust(y) => match y {
+                    DataType::Bool(x) => return x,
+                    _ => panic!("Not bool object"),
+                },
+                _ => panic!(),
+            },
             Err(_) => {
                 panic!()
             }
         }
     }
-    fn compare(operator: Operator, mut left: Object, right: Object) -> bool{
+    fn compare(operator: Operator, mut left: Object, right: Object) -> bool {
         match operator {
             Operator::Eq => {
                 let hashmap = left.convert_vec_to_hashmap(
@@ -263,21 +259,23 @@ impl Compare{
                     _ => panic!(),
                 }
             }
-            _ => { panic!("not a compare operator") }
+            _ => {
+                panic!("not a compare operator")
+            }
         }
     }
 
-    fn compare_calc(&mut self) -> bool{
+    fn compare_calc(&mut self) -> bool {
         let mut comparators = vec![*self.left.clone()];
         comparators.extend(*self.comparators.clone());
-        for (index,left) in comparators.iter().enumerate(){
+        for (index, left) in comparators.iter().enumerate() {
             let left = deref_expression(left.clone());
-            if index + 1 ==  comparators.len(){
-                return true
+            if index + 1 == comparators.len() {
+                return true;
             }
             let right = deref_expression(comparators[index + 1].clone());
-            if Self::compare(self.ops[index].clone(),left.value,right.value) {
-                return true
+            if Self::compare(self.ops[index].clone(), left.value, right.value) {
+                return true;
             }
         }
         true
@@ -294,7 +292,7 @@ pub struct UnaryOp {
     pub op: Operator,
     pub operand: Box<Type>,
 }
-impl Calc for UnaryOp{
+impl Calc for UnaryOp {
     fn calc(&mut self) -> Constant {
         todo!()
     }

@@ -7,7 +7,6 @@ mod tools;
 pub mod shadow {
     include!(concat!(env!("OUT_DIR"), "/shadow.rs"));
 }
-use crate::test::test;
 use clap::Parser;
 
 #[derive(Parser)]
@@ -27,6 +26,4 @@ fn main() {
     );
     println!("{}", detail_version);
     let _cli = Cli::parse();
-
-    test()
 }

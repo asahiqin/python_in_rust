@@ -1,5 +1,7 @@
 use crate::ast::ast_struct::DataType;
-use crate::ast::data_type::core_type::{bool_behaviour, float_behaviour, int_behaviour, str_behaviour};
+use crate::ast::data_type::core_type::{
+    bool_behaviour, float_behaviour, int_behaviour, str_behaviour,
+};
 use std::collections::HashMap;
 use std::error::Error;
 
@@ -16,7 +18,7 @@ impl RustObjBehavior {
             "float" => float_behaviour(self.method.clone(), x),
             "bool" => bool_behaviour(self.method.clone(), x),
             "str" => str_behaviour(self.method.clone(), x),
-            _ => todo!()
+            _ => todo!(),
         }
     }
 }
@@ -98,14 +100,10 @@ pub enum PyResult {
 }
 #[allow(dead_code)]
 impl Object {
-    pub fn get_value(&self, key:String) -> Result<ObjAttr, Box<dyn Error>>{
+    pub fn get_value(&self, key: String) -> Result<ObjAttr, Box<dyn Error>> {
         match self.attr.get(&key) {
-            None => {
-                Err(std::fmt::Error.into())
-            }
-            Some(x) => {
-                Ok(x.clone())
-            }
+            None => Err(std::fmt::Error.into()),
+            Some(x) => Ok(x.clone()),
         }
     }
     fn inner_call(&self, behavior: String, other: HashMapAttr) -> PyResult {

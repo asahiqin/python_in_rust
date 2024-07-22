@@ -1,11 +1,11 @@
 use crate::ast::ast_struct::DataType;
+use crate::ast::data_type::data_type_calc::CompareResult;
 use crate::ast::data_type::object::{
     HashMapAttr, ObjAttr, ObjBehaviors, Object, PyResult, RustObjBehavior,
 };
 use crate::define_obj_method;
 use std::collections::HashMap;
 use std::error::Error;
-use crate::ast::data_type::data_type_calc::CompareResult;
 
 fn build_rust_method(name: String, method: String, args: Vec<String>) -> (String, ObjBehaviors) {
     (
@@ -80,7 +80,6 @@ macro_rules! build_method {
             build_rust_method(name.clone(), String::from("__ne__"), param.clone()),
             build_rust_method(name.clone(), String::from("__le__"), param.clone()),
             build_rust_method(name.clone(), String::from("__ge__"), param.clone()),
-
         ];
         let int_behavior: HashMap<String, ObjBehaviors> = int_method_vec.into_iter().collect();
         Object::default()
@@ -90,9 +89,18 @@ macro_rules! build_method {
     }};
 }
 
-fn custom_behaviour(obj_x:DataType, method: String, args: HashMapAttr) -> PyResult{
-    let method_vec = ["__add__", "__sub__","__mult__","__div__","__lt__","__gt__","__eq__","__ne__","__le__","__ge__"];
-    if method_vec.map(|x| return x == method.clone()).iter().filter(|x| **x).count() == 1 {
+fn custom_behaviour(obj_x: DataType, method: String, args: HashMapAttr) -> PyResult {
+    let method_vec = [
+        "__add__", "__sub__", "__mult__", "__div__", "__lt__", "__gt__", "__eq__", "__ne__",
+        "__le__", "__ge__",
+    ];
+    if method_vec
+        .map(|x| return x == method.clone())
+        .iter()
+        .filter(|x| **x)
+        .count()
+        == 1
+    {
         let other = get_attr_until_rust(
             get_from_hashmap("other".parse().unwrap(), args),
             "x".parse().unwrap(),
@@ -221,7 +229,7 @@ pub fn obj_int(x: i64) -> Object {
 pub fn int_behaviour(method: String, args: HashMapAttr) -> PyResult {
     let obj_x: DataType = obj_parser("self".to_string(), "x".to_string(), args.clone())
         .unwrap_or_else(|x| panic!("{}", x));
-    match custom_behaviour(obj_x, method, args){
+    match custom_behaviour(obj_x, method, args) {
         PyResult::Some(x) => {
             return PyResult::Some(x);
         }
@@ -240,7 +248,7 @@ pub fn obj_float(x: f64) -> Object {
 pub fn float_behaviour(method: String, args: HashMapAttr) -> PyResult {
     let obj_x: DataType = obj_parser("self".to_string(), "x".to_string(), args.clone())
         .unwrap_or_else(|x| panic!("{}", x));
-    match custom_behaviour(obj_x, method, args){
+    match custom_behaviour(obj_x, method, args) {
         PyResult::Some(x) => {
             return PyResult::Some(x);
         }
@@ -258,7 +266,7 @@ pub fn obj_str(x: String) -> Object {
 pub fn str_behaviour(method: String, args: HashMapAttr) -> PyResult {
     let obj_x: DataType = obj_parser("self".to_string(), "x".to_string(), args.clone())
         .unwrap_or_else(|x| panic!("{}", x));
-    match custom_behaviour(obj_x, method, args){
+    match custom_behaviour(obj_x, method, args) {
         PyResult::Some(x) => {
             return PyResult::Some(x);
         }
@@ -276,7 +284,7 @@ pub fn obj_bool(x: bool) -> Object {
 pub fn bool_behaviour(method: String, args: HashMapAttr) -> PyResult {
     let obj_x: DataType = obj_parser("self".to_string(), "x".to_string(), args.clone())
         .unwrap_or_else(|x| panic!("{}", x));
-    match custom_behaviour(obj_x, method, args){
+    match custom_behaviour(obj_x, method, args) {
         PyResult::Some(x) => {
             return PyResult::Some(x);
         }
@@ -285,7 +293,7 @@ pub fn bool_behaviour(method: String, args: HashMapAttr) -> PyResult {
     PyResult::None
 }
 
-pub fn obj_list(x: Vec<Object>) -> Object{
+pub fn obj_list(x: Vec<Object>) -> Object {
     build_method!(
         name:"bool".to_string();
         param:vec!["self".to_string(),"other".to_string()];
