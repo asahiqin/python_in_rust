@@ -47,7 +47,7 @@ fn data_type_to_obj(x: DataType) -> PyObject {
         DataType::Int(x) => obj_int(x),
         DataType::Float(x) => obj_float(x),
         DataType::Bool(x) => obj_bool(x),
-        DataType::String(x) => obj_str(x),
+        DataType::Str(x) => obj_str(x),
         _ => todo!(),
     }
 }
@@ -260,7 +260,7 @@ pub fn obj_str(x: String) -> PyObject {
     build_method!(
         name:"str".to_string();
         param:vec!["self".to_string(),"other".to_string()];
-        data:DataType::String(x)
+        data:DataType::Str(x)
     )
 }
 pub fn str_behaviour(method: String, args: HashMapAttr) -> PyResult {

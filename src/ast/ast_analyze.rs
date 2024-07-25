@@ -92,7 +92,6 @@ impl TokenIter {
         false
     }
     fn consume(&mut self, token_type: TokenType, _err: String) -> Result<Token, String> {
-        println!("{:?}", self.peek());
         self.advance();
         if self.check(token_type) {
             return Ok(self.advance());
@@ -129,7 +128,7 @@ pub(crate) fn build_parser(scanner: Scanner) -> Parser {
 
 impl Parser {
     pub fn parser(&mut self) -> Type {
-        println!("{:?}", self.expression());
+        // println!("{:?}", self.expression());
         return self.expression();
     }
     fn primary(&mut self) -> Result<Type, Box<dyn Error>> {
@@ -145,7 +144,7 @@ impl Parser {
         {
             return Ok(Type::Constant(Constant::new(
                 match self.token_iter.previous(1).literal {
-                    Literal::String(str) => obj_str(str),
+                    Literal::Str(str) => obj_str(str),
                     Literal::Float(float) => obj_float(float),
                     Literal::Int(int) => obj_int(int),
                     _ => obj_int(0),

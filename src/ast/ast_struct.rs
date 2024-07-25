@@ -23,6 +23,34 @@ pub enum Type {
     UnaryOp(UnaryOp),
     BoolOp(BoolOp),
 }
+
+impl Type {
+    pub fn exec(&mut self) -> Type{
+        match self {
+            Type::Assign(x) => {
+                todo!()
+            }
+            Type::Constant(x) => {
+                Type::Constant(x.clone())
+            }
+            Type::Name(x) => {
+                todo!()
+            }
+            Type::BinOp(x) => {
+                Type::Constant(x.calc())
+            }
+            Type::Compare(x) => {
+                Type::Constant(x.calc())
+            }
+            Type::UnaryOp(x) => {
+                Type::Constant(x.calc())
+            }
+            Type::BoolOp(x) => {
+                Type::Constant(x.calc())
+            }
+        }
+    }
+}
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct Assign {
@@ -43,7 +71,7 @@ pub enum DataType {
     Int(i64),
     Float(f64),
     Bool(bool),
-    String(String),
+    Str(String),
     List(Box<Vec<PyObject>>),
     None,
 }

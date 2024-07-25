@@ -67,7 +67,7 @@ pub enum TokenType {
 
 #[derive(Debug, Default, Clone)]
 pub enum Literal {
-    String(String),
+    Str(String),
     Float(f64),
     Int(i64),
     Identifier(String),
@@ -210,7 +210,7 @@ impl Scanner {
     fn add_for_string(&mut self) {
         self.add_token_with_literal(
             STRING,
-            Literal::String(String::from(strip_quotes!(self.lexeme))),
+            Literal::Str(String::from(strip_quotes!(self.lexeme))),
         );
         self.checker.is_checked = true;
     }

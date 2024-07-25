@@ -29,6 +29,14 @@ But,the DataType::List is implemented in the object
 #[allow(dead_code)]
 impl DataType {
     // Calc
+
+    /// ## fn add
+    /// DataType相加运算，会自动转化为合适的类型
+    /// ```
+    /// let mut a = DataType::Int(1)
+    /// a.add(DataType::Float(2.0)) // Return DataType::Float(3.0)
+    /// ```
+    /// ***这段源码可读性为0***
     pub(crate) fn add(self, rhs: Self) -> Result<DataType, Box<dyn Error>> {
         match self {
             DataType::Int(x) => match rhs {
@@ -49,13 +57,20 @@ impl DataType {
                 DataType::Bool(y) => Ok(DataType::Int(if y { 2 } else { 1 })),
                 _ => Err(std::fmt::Error.into()),
             },
-            DataType::String(x) => match rhs {
-                DataType::String(y) => Ok(DataType::String(format!("{}{}", x, y))),
+            DataType::Str(x) => match rhs {
+                DataType::Str(y) => Ok(DataType::Str(format!("{}{}", x, y))),
                 _ => Err(std::fmt::Error.into()),
             },
             _ => Err(std::fmt::Error.into()),
         }
     }
+    /// ## fn add
+    /// DataType相减运算，会自动转化为合适的类型
+    /// ```
+    /// let mut a = DataType::Int(1)
+    /// a.sub(DataType::Float(2.0)) // Return DataType::Float(-1.0)
+    /// ```
+    /// ***这段源码可读性为0***
     pub(crate) fn sub(self, rhs: Self) -> Result<DataType, Box<dyn Error>> {
         match self {
             DataType::Int(x) => match rhs {
@@ -107,8 +122,8 @@ impl DataType {
                 DataType::Bool(y) => Ok(DataType::Int(if y && x { 1 } else { 0 })),
                 _ => Err(std::fmt::Error.into()),
             },
-            DataType::String(x) => match rhs {
-                DataType::Int(y) => Ok(DataType::String(x.repeat(y as usize))),
+            DataType::Str(x) => match rhs {
+                DataType::Int(y) => Ok(DataType::Str(x.repeat(y as usize))),
                 _ => Err(std::fmt::Error.into()),
             },
             _ => Err(std::fmt::Error.into()),
@@ -243,10 +258,10 @@ impl DataType {
                 }
                 _ => Err(std::fmt::Error.into()),
             },
-            DataType::String(x) => {
+            DataType::Str(x) => {
                 let x_ascii = x.into_bytes();
                 match rhs {
-                    DataType::String(y) => {
+                    DataType::Str(y) => {
                         let y_ascii = y.into_bytes();
                         for (index, item) in x_ascii.iter().enumerate() {
                             if item.clone() > y_ascii[index] {
@@ -274,4 +289,42 @@ impl DataType {
             _ => Err(std::fmt::Error.into()),
         }
     }
+    pub fn bool(&self) -> bool{
+        match self {
+            DataType::Int(x) => {
+                if *x != 0{
+                    true
+                }else {
+                    false
+                }
+            }
+            DataType::Float(x) => {
+                if *x != 0.0{
+                    true
+                }else {
+                    false
+                }
+            }
+            DataType::Bool(x) => {
+                *x
+            }
+            DataType::Str(x) => {
+                if x.as_str() != "" {
+                    true
+                }else {
+                    false
+                }
+            }
+            DataType::List(x) => {
+                if x.len() != 0{
+                    true
+                }else {
+                    false
+                }
+            }
+            DataType::None => {false}
+        }
+    }
+
+
 }

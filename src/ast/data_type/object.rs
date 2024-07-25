@@ -5,6 +5,9 @@ use crate::ast::data_type::core_type::{
 use std::collections::HashMap;
 use std::error::Error;
 
+/// ## struct RustObjBehavior
+/// 此结构体用来调用对应的rust函数
+/// **注：解释器还未完工，此结构体属于临时解决办法**
 #[derive(Clone, Debug, PartialEq)]
 pub struct RustObjBehavior {
     pub name: String,
@@ -12,6 +15,7 @@ pub struct RustObjBehavior {
     pub args: Vec<String>,
 }
 impl RustObjBehavior {
+    /// 调用相关代码
     fn exec(&self, x: HashMap<String, PyObjAttr>) -> PyResult {
         match self.name.as_str() {
             "int" => int_behaviour(self.method.clone(), x),
@@ -22,6 +26,12 @@ impl RustObjBehavior {
         }
     }
 }
+/// ## enum PyObjBehaviors
+/// 此枚举主要用来确定应该使用解释器还是直接调用rust的函数
+/// **注：解释器还未完工，此枚举属于临时解决办法**
+/// - None:没有实现方法
+/// - Rust：调用rust的函数
+/// - Interpreter：todo!()
 #[allow(dead_code)]
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum PyObjBehaviors {
@@ -29,6 +39,10 @@ pub(crate) enum PyObjBehaviors {
     Rust(Box<RustObjBehavior>),
     None,
 }
+
+/// ## enum PyObjAttr
+/// 此枚举主要用来确定值的类型为Rust的DataType枚举还是解释器的对象
+/// **注：解释器还未完工，此枚举属于临时解决办法**
 #[allow(dead_code)]
 #[derive(Clone, Debug, PartialEq)]
 pub enum PyObjAttr {
@@ -36,10 +50,16 @@ pub enum PyObjAttr {
     Rust(DataType),
     None,
 }
+
+/// ## struct Object
+/// **注：解释器还未完工，此结构体最终形态尚未确定**
+/// - attr: 对象的属性
+/// - behaviors： 对象的方法
+/// - identity： 对象唯一标识符(String)
 #[derive(Clone, Debug, PartialEq)]
 pub struct PyObject {
-    pub(crate) attr: HashMap<String, PyObjAttr>,
-    behaviors: HashMap<String, PyObjBehaviors>,
+    pub(crate) attr: HashMapAttr,
+    behaviors: HashMapBehavior,
     identity: String,
 }
 impl Default for PyObject {
@@ -92,9 +112,26 @@ impl PyObject {
         self.clone()
     }
 }
+/// ## type HashMapAttr
+/// **注：解释器还未完工，此类型属于临时解决办法**
+/// 存储属性的kv
 pub type HashMapAttr = HashMap<String, PyObjAttr>;
+
+/// ## type HashMapBehavior
+/// **注：解释器还未完工，此类型属于临时解决办法**
+/// 存储方法的kv
 pub type HashMapBehavior = HashMap<String, PyObjBehaviors>;
 
+/**
+## enum PyResult
+这个枚举用来确定执行的返回值
+**注：解释器还未完工，此枚举属于临时解决办法**
+- None：无返回值
+- Some：返回一个PyObject，由于python返回多个值实际上是元组，故不考虑多个值的情况
+- ChangeAttr：改变属性（临时）
+- ChangeBehavior：改变方法（临时）
+- Err：出错了
+ */
 #[allow(dead_code)]
 #[derive(Clone, Debug)]
 pub enum PyResult {
@@ -245,6 +282,18 @@ impl PyObject {
     }
     pub fn le(&mut self, other: HashMap<String, PyObjAttr>) -> PyResult {
         self.call(String::from("__le__"), other)
+    }
+    pub fn neg(&mut self, other: HashMap<String, PyObjAttr>) -> PyResult {
+        self.call(String::from("__neg__"), other)
+    }
+    pub fn pos(&mut self, other: HashMap<String, PyObjAttr>) -> PyResult {
+        self.call(String::from("__pos__"), other)
+    }
+    pub fn not(&mut self, other: HashMap<String, PyObjAttr>) -> PyResult {
+        self.call(String::from("__not__"), other)
+    }
+    pub fn bool(&mut self, other: HashMap<String, PyObjAttr>) -> PyResult {
+        self.call(String::from("__bool__"), other)
     }
 }
 

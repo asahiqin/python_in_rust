@@ -8,7 +8,8 @@ build = "build.rs"
 
 [dependencies]
 clap = { version = "4.4.13", features = ["derive"] }
-
+log = "0.4"
+colored="1.7.1"
 
 [build-dependencies]
 shadow-rs = "0.3"
