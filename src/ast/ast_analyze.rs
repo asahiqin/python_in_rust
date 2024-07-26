@@ -4,7 +4,10 @@ use crate::ast::ast_struct::Operator::Not;
 use crate::ast::ast_struct::{
     ASTNode, BinOp, BoolOp, Compare, Constant, DataType, Operator, Type, UnaryOp,
 };
-use crate::ast::data_type::core_type::{obj_bool, obj_float, obj_int, obj_str};
+use crate::ast::data_type::bool::obj_bool;
+use crate::ast::data_type::float::obj_float;
+use crate::ast::data_type::int::obj_int;
+use crate::ast::data_type::str::obj_str;
 use crate::ast::scanner::TokenType::{
     BangEqual, EqualEqual, GreaterEqual, In, Is, LeftParen, LessEqual, Minus, Plus, Slash, Star,
     AND, EOF, GREATER, LESS, NOT, OR,

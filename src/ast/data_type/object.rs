@@ -1,9 +1,10 @@
 use crate::ast::ast_struct::DataType;
-use crate::ast::data_type::core_type::{
-    bool_behaviour, float_behaviour, int_behaviour, str_behaviour,
-};
 use std::collections::HashMap;
 use std::error::Error;
+use crate::ast::data_type::bool::{bool_behaviour, obj_bool};
+use crate::ast::data_type::float::float_behaviour;
+use crate::ast::data_type::int::int_behaviour;
+use crate::ast::data_type::str::str_behaviour;
 
 /// ## struct RustObjBehavior
 /// 此结构体用来调用对应的rust函数
@@ -76,6 +77,13 @@ impl Default for PyObject {
             (String::from("__name__"), PyObjBehaviors::None),
             (String::from("__le__"), PyObjBehaviors::None),
             (String::from("__ge__"), PyObjBehaviors::None),
+            (String::from("__neg__"), PyObjBehaviors::None),
+            (String::from("__radd__"), PyObjBehaviors::None),
+            (String::from("__bool__"), PyObjBehaviors::None),
+            (String::from("__pos__"), PyObjBehaviors::None),
+            (String::from("__not__"), PyObjBehaviors::None),
+            (String::from("__len__"), PyObjBehaviors::None),
+            (String::from("__call__"), PyObjBehaviors::None),
         ];
         let default_behavior: HashMap<String, PyObjBehaviors> =
             default_method_vec.into_iter().collect();
@@ -151,7 +159,7 @@ impl PyObject {
     }
     fn inner_call(&self, behavior: String, other: HashMapAttr) -> PyResult {
         match self.behaviors.get(&behavior) {
-            None => PyResult::Err,
+            None => PyResult::None,
             Some(x) => {
                 let attr_vec: Vec<(String, PyObjAttr)> = vec![(
                     String::from("self"),
@@ -283,18 +291,52 @@ impl PyObject {
     pub fn le(&mut self, other: HashMap<String, PyObjAttr>) -> PyResult {
         self.call(String::from("__le__"), other)
     }
-    pub fn neg(&mut self, other: HashMap<String, PyObjAttr>) -> PyResult {
+    pub fn neg(&mut self) -> PyResult {
+        let other:HashMap<String, PyObjAttr> = HashMap::new();
         self.call(String::from("__neg__"), other)
     }
-    pub fn pos(&mut self, other: HashMap<String, PyObjAttr>) -> PyResult {
-        self.call(String::from("__pos__"), other)
+    pub fn not(&mut self) -> PyResult{
+        PyResult::Some(obj_bool(!obj_to_bool(self.clone())))
     }
-    pub fn not(&mut self, other: HashMap<String, PyObjAttr>) -> PyResult {
-        self.call(String::from("__not__"), other)
+    pub fn pos(&mut self) -> PyResult {
+        let other:HashMap<String, PyObjAttr> = HashMap::new();
+        self.call(String::from("__pos__"),other)
     }
-    pub fn bool(&mut self, other: HashMap<String, PyObjAttr>) -> PyResult {
+    pub fn bool(&mut self) -> PyResult {
+        let other:HashMap<String, PyObjAttr> = HashMap::new();
         self.call(String::from("__bool__"), other)
     }
+    pub fn len(&mut self) -> PyResult {
+        let other:HashMap<String, PyObjAttr> = HashMap::new();
+        self.call(String::from("__len__"), other)
+    }
+}
+pub fn obj_to_bool(mut obj: PyObject) -> bool {
+    match obj.attr.get("x") {
+        Some(x) => {
+            match x {
+                PyObjAttr::Rust(y) => return y.bool(),
+                PyObjAttr::Interpreter(y) => return obj_to_bool(*y.clone()),
+                _ => {},
+            };
+        }
+        _ => {}
+    }
+    match obj.bool() {
+        PyResult::Some(x) => {
+            return obj_to_bool(x)
+        }
+        PyResult::None => {
+            match obj.len() {
+                PyResult::Some(x) => {
+                    return obj_to_bool(x);
+                }
+                _ => {}
+            };
+        }
+        _ => {}
+    }
+    panic!("Error to convert to bool")
 }
 
 #[macro_export]

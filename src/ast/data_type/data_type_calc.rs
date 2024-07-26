@@ -289,42 +289,38 @@ impl DataType {
             _ => Err(std::fmt::Error.into()),
         }
     }
-    pub fn bool(&self) -> bool{
+    pub fn bool(&self) -> bool {
         match self {
             DataType::Int(x) => {
-                if *x != 0{
+                if *x != 0 {
                     true
-                }else {
+                } else {
                     false
                 }
             }
             DataType::Float(x) => {
-                if *x != 0.0{
+                if *x != 0.0 {
                     true
-                }else {
+                } else {
                     false
                 }
             }
-            DataType::Bool(x) => {
-                *x
-            }
+            DataType::Bool(x) => *x,
             DataType::Str(x) => {
                 if x.as_str() != "" {
                     true
-                }else {
+                } else {
                     false
                 }
             }
             DataType::List(x) => {
-                if x.len() != 0{
+                if x.len() != 0 {
                     true
-                }else {
+                } else {
                     false
                 }
             }
-            DataType::None => {false}
+            DataType::None => false,
         }
     }
-
-
 }

@@ -1,7 +1,7 @@
-use crate::ast::data_type::core_type::obj_bool;
-use crate::ast::data_type::object::{PyObjAttr, PyObject, PyResult};
-use std::error::Error;
 use std::ops::Add;
+use crate::ast::data_type::bool::obj_bool;
+
+use crate::ast::data_type::object::{HashMapAttr, PyObjAttr, PyObject, PyResult};
 
 #[allow(dead_code)]
 #[derive(Debug)]
@@ -25,29 +25,19 @@ pub enum Type {
 }
 
 impl Type {
-    pub fn exec(&mut self) -> Type{
+    pub fn exec(&mut self) -> Type {
         match self {
             Type::Assign(x) => {
                 todo!()
             }
-            Type::Constant(x) => {
-                Type::Constant(x.clone())
-            }
+            Type::Constant(x) => Type::Constant(x.clone()),
             Type::Name(x) => {
                 todo!()
             }
-            Type::BinOp(x) => {
-                Type::Constant(x.calc())
-            }
-            Type::Compare(x) => {
-                Type::Constant(x.calc())
-            }
-            Type::UnaryOp(x) => {
-                Type::Constant(x.calc())
-            }
-            Type::BoolOp(x) => {
-                Type::Constant(x.calc())
-            }
+            Type::BinOp(x) => Type::Constant(x.calc()),
+            Type::Compare(x) => Type::Constant(x.calc()),
+            Type::UnaryOp(x) => Type::Constant(x.calc()),
+            Type::BoolOp(x) => Type::Constant(x.calc()),
         }
     }
 }
@@ -322,7 +312,28 @@ pub struct UnaryOp {
 }
 impl Calc for UnaryOp {
     fn calc(&mut self) -> Constant {
-        todo!()
+        let mut x: PyObject = deref_expression(*self.operand.clone()).clone().value;
+        match self.op.clone() {
+            Operator::UAdd => {
+                match x.pos() {
+                    PyResult::Some(x) => Constant::new(x),
+                    _ => panic!(),
+                }
+            }
+            Operator::USub => {
+                match x.neg() {
+                    PyResult::Some(x) => Constant::new(x),
+                    _ => panic!(),
+                }
+            }
+            Operator::Not => {
+                match x.not() {
+                    PyResult::Some(x) => Constant::new(x),
+                    _ => panic!(),
+                }
+            }
+            _ => panic!("Error note")
+        }
     }
 }
 #[allow(dead_code)]

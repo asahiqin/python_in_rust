@@ -1,11 +1,14 @@
 use crate::ast::ast_analyze::build_parser;
 use crate::ast::ast_struct::{Calc, Compare, Constant, DataType, Operator, Type};
-use crate::ast::data_type::core_type::{obj_float, obj_int};
 use crate::ast::data_type::object::PyObjAttr;
 use crate::ast::scanner::build_scanner;
 
 mod tests {
     use colored::Colorize;
+    use crate::ast::data_type::float::obj_float;
+    use crate::ast::data_type::int::obj_int;
+    use crate::ast::data_type::object::obj_to_bool;
+    use crate::ast::data_type::str::obj_str;
 
     use super::*;
 
@@ -42,6 +45,14 @@ mod tests {
             bin.calc().value.get_value("x".to_string()).unwrap(),
             PyObjAttr::Rust(DataType::Bool(true))
         )
+    }
+
+    #[test]
+    fn test_obj_to_bool(){
+        println!("{}", "[INFO] Test Object To Bool".yellow());
+        assert_eq!(obj_to_bool(obj_str(String::from("hello"))), true);
+        assert_eq!(obj_to_bool(obj_float(1.0)), true);
+        assert_eq!(obj_to_bool(obj_str("".to_string())), false);
     }
 
     #[test]
