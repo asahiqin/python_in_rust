@@ -1,11 +1,11 @@
 use crate::ast::ast_struct::DataType;
+use crate::ast::data_type::core_type::build_rust_method;
 use crate::ast::data_type::core_type::{custom_behaviour, obj_parser};
+use crate::ast::data_type::object::PyObjAttr;
+use crate::ast::data_type::object::PyObjBehaviors;
 use crate::ast::data_type::object::{HashMapAttr, PyObject, PyResult};
 use crate::build_method;
-use crate::ast::data_type::object::PyObjBehaviors;
-use crate::ast::data_type::core_type::build_rust_method;
 use std::collections::HashMap;
-use crate::ast::data_type::object::PyObjAttr;
 
 pub fn obj_bool(x: bool) -> PyObject {
     build_method!(

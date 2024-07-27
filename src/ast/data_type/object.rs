@@ -1,10 +1,12 @@
 use crate::ast::ast_struct::DataType;
-use std::collections::HashMap;
-use std::error::Error;
 use crate::ast::data_type::bool::{bool_behaviour, obj_bool};
 use crate::ast::data_type::float::float_behaviour;
 use crate::ast::data_type::int::int_behaviour;
 use crate::ast::data_type::str::str_behaviour;
+use crate::ast::error::object_error::{ObjBasicError, ObjMethodCallError};
+use std::collections::HashMap;
+use std::error::Error;
+use crate::ast::error::ErrorType;
 
 /// ## struct RustObjBehavior
 /// 此结构体用来调用对应的rust函数
@@ -147,7 +149,7 @@ pub enum PyResult {
     Some(PyObject),
     ChangeAttr(HashMapAttr, Box<PyResult>),
     ChangeBehavior(HashMapBehavior, Box<PyResult>),
-    Err,
+    Err(ErrorType),
 }
 #[allow(dead_code)]
 impl PyObject {
@@ -157,9 +159,18 @@ impl PyObject {
             Some(x) => Ok(x.clone()),
         }
     }
-    fn inner_call(&self, behavior: String, other: HashMapAttr) -> PyResult {
+    fn create_obj_call_error(&self, method: String) -> ObjMethodCallError {
+        ObjMethodCallError::default()
+            .obj(ObjBasicError::default().identity(self.identity.clone()))
+            .method(method)
+    }
+    fn inner_call(
+        &self,
+        behavior: String,
+        other: HashMapAttr,
+    ) -> Result<PyResult, ObjMethodCallError> {
         match self.behaviors.get(&behavior) {
-            None => PyResult::None,
+            None => Err(self.create_obj_call_error(behavior)),
             Some(x) => {
                 let attr_vec: Vec<(String, PyObjAttr)> = vec![(
                     String::from("self"),
@@ -171,10 +182,8 @@ impl PyObject {
                     PyObjBehaviors::Interpreter => {
                         todo!()
                     }
-                    PyObjBehaviors::Rust(x) => x.exec(attr),
-                    PyObjBehaviors::None => {
-                        panic!("Cannot Support Calc")
-                    }
+                    PyObjBehaviors::Rust(x) => Ok(x.exec(attr)),
+                    PyObjBehaviors::None => Err(self.create_obj_call_error(behavior)),
                 }
             }
         }
@@ -193,6 +202,7 @@ impl PyObject {
         method: String,
         value: Vec<PyObjAttr>,
     ) -> HashMap<String, PyObjAttr> {
+        println!("method:{},obj:{}",method.clone(),self.identity.clone());
         let mut key: Vec<String> = vec![];
         match self.behaviors.get(&method.clone()) {
             None => {}
@@ -223,20 +233,25 @@ impl PyObject {
     }
     pub fn call(&mut self, behavior: String, other: HashMap<String, PyObjAttr>) -> PyResult {
         match self.inner_call(behavior, other) {
-            PyResult::None => PyResult::None,
-            PyResult::Some(x) => PyResult::Some(x),
-            PyResult::ChangeAttr(x, y) => {
-                self.attr
-                    .extend(x.into_iter().map(|(k, v)| (k.clone(), v.clone())));
-                PyObject::deref_py_result(*y)
-            }
-            PyResult::ChangeBehavior(x, y) => {
-                self.behaviors
-                    .extend(x.into_iter().map(|(k, v)| (k.clone(), v.clone())));
-                PyObject::deref_py_result(*y)
-            }
-            PyResult::Err => {
-                panic!("Not a method")
+            Ok(x) => match x {
+                PyResult::None => PyResult::None,
+                PyResult::Some(x) => PyResult::Some(x),
+                PyResult::ChangeAttr(x, y) => {
+                    self.attr
+                        .extend(x.into_iter().map(|(k, v)| (k.clone(), v.clone())));
+                    PyObject::deref_py_result(*y)
+                }
+                PyResult::ChangeBehavior(x, y) => {
+                    self.behaviors
+                        .extend(x.into_iter().map(|(k, v)| (k.clone(), v.clone())));
+                    PyObject::deref_py_result(*y)
+                }
+                PyResult::Err(x) => {
+                    PyResult::Err(x)
+                }
+            },
+            Err(x) => {
+                PyResult::Err(ErrorType::ObjMethodCallError(x))
             }
         }
     }
@@ -292,51 +307,57 @@ impl PyObject {
         self.call(String::from("__le__"), other)
     }
     pub fn neg(&mut self) -> PyResult {
-        let other:HashMap<String, PyObjAttr> = HashMap::new();
+        let other: HashMap<String, PyObjAttr> = HashMap::new();
         self.call(String::from("__neg__"), other)
     }
-    pub fn not(&mut self) -> PyResult{
+    pub fn not(&mut self) -> PyResult {
         PyResult::Some(obj_bool(!obj_to_bool(self.clone())))
     }
     pub fn pos(&mut self) -> PyResult {
-        let other:HashMap<String, PyObjAttr> = HashMap::new();
-        self.call(String::from("__pos__"),other)
+        let other: HashMap<String, PyObjAttr> = HashMap::new();
+        self.call(String::from("__pos__"), other)
     }
     pub fn bool(&mut self) -> PyResult {
-        let other:HashMap<String, PyObjAttr> = HashMap::new();
+        let other: HashMap<String, PyObjAttr> = HashMap::new();
         self.call(String::from("__bool__"), other)
     }
     pub fn len(&mut self) -> PyResult {
-        let other:HashMap<String, PyObjAttr> = HashMap::new();
+        let other: HashMap<String, PyObjAttr> = HashMap::new();
         self.call(String::from("__len__"), other)
     }
 }
 pub fn obj_to_bool(mut obj: PyObject) -> bool {
-    match obj.attr.get("x") {
-        Some(x) => {
-            match x {
-                PyObjAttr::Rust(y) => return y.bool(),
-                PyObjAttr::Interpreter(y) => return obj_to_bool(*y.clone()),
-                _ => {},
-            };
-        }
-        _ => {}
-    }
+    if obj.identity == "bool" {
+        match obj.get_value("x".to_string()) {
+            Ok(x) => match x {
+                PyObjAttr::Rust(x) => return x.bool(),
+                _ => {
+                    panic!("Cannot identify boolean values")
+                }
+            },
+            Err(_) => {
+                panic!("Cannot identify boolean values")
+            }
+        };
+    };
     match obj.bool() {
-        PyResult::Some(x) => {
-            return obj_to_bool(x)
-        }
-        PyResult::None => {
-            match obj.len() {
-                PyResult::Some(x) => {
-                    return obj_to_bool(x);
+        PyResult::Some(x) => return obj_to_bool(x),
+        PyResult::Err(x) => {
+            match x {
+                ErrorType::ObjMethodCallError(_) => {
+                    match obj.len() {
+                        PyResult::Some(y) => {
+                            return obj_to_bool(y);
+                        }
+                        _ => {}
+                    };
                 }
                 _ => {}
-            };
+            }
         }
         _ => {}
     }
-    panic!("Error to convert to bool")
+    panic!("Error to convert to bool:{}",obj.identity)
 }
 
 #[macro_export]

@@ -1,17 +1,21 @@
 use crate::ast::ast_struct::DataType;
+use crate::ast::data_type::bool::obj_bool;
 use crate::ast::data_type::data_type_calc::CompareResult;
+use crate::ast::data_type::float::obj_float;
+use crate::ast::data_type::int::obj_int;
 use crate::ast::data_type::object::{
     HashMapAttr, PyObjAttr, PyObjBehaviors, PyObject, PyResult, RustObjBehavior,
 };
+use crate::ast::data_type::str::obj_str;
 use crate::define_obj_method;
 use std::collections::HashMap;
 use std::error::Error;
-use crate::ast::data_type::bool::obj_bool;
-use crate::ast::data_type::float::obj_float;
-use crate::ast::data_type::int::obj_int;
-use crate::ast::data_type::str::obj_str;
 
-pub fn build_rust_method(name: String, method: String, args: Vec<String>) -> (String, PyObjBehaviors) {
+pub fn build_rust_method(
+    name: String,
+    method: String,
+    args: Vec<String>,
+) -> (String, PyObjBehaviors) {
     (
         method.clone(),
         PyObjBehaviors::Rust(Box::new(RustObjBehavior { name, method, args })),
@@ -56,7 +60,11 @@ fn data_type_to_obj(x: DataType) -> PyObject {
     }
 }
 
-pub(crate) fn obj_parser(param: String, key: String, args: HashMapAttr) -> Result<DataType, Box<dyn Error>> {
+pub(crate) fn obj_parser(
+    param: String,
+    key: String,
+    args: HashMapAttr,
+) -> Result<DataType, Box<dyn Error>> {
     // Get the value of the self parameter of the function
     let obj_self = get_from_hashmap(param.parse().unwrap(), args.clone());
     match obj_self {
@@ -239,5 +247,3 @@ pub(crate) fn custom_behaviour(obj_x: DataType, method: String, args: HashMapAtt
     }
     PyResult::None
 }
-
-

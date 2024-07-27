@@ -1,5 +1,5 @@
-use std::ops::Add;
 use crate::ast::data_type::bool::obj_bool;
+use std::ops::Add;
 
 use crate::ast::data_type::object::{HashMapAttr, PyObjAttr, PyObject, PyResult};
 
@@ -314,25 +314,19 @@ impl Calc for UnaryOp {
     fn calc(&mut self) -> Constant {
         let mut x: PyObject = deref_expression(*self.operand.clone()).clone().value;
         match self.op.clone() {
-            Operator::UAdd => {
-                match x.pos() {
-                    PyResult::Some(x) => Constant::new(x),
-                    _ => panic!(),
-                }
-            }
-            Operator::USub => {
-                match x.neg() {
-                    PyResult::Some(x) => Constant::new(x),
-                    _ => panic!(),
-                }
-            }
-            Operator::Not => {
-                match x.not() {
-                    PyResult::Some(x) => Constant::new(x),
-                    _ => panic!(),
-                }
-            }
-            _ => panic!("Error note")
+            Operator::UAdd => match x.pos() {
+                PyResult::Some(x) => Constant::new(x),
+                _ => panic!(),
+            },
+            Operator::USub => match x.neg() {
+                PyResult::Some(x) => Constant::new(x),
+                _ => panic!(),
+            },
+            Operator::Not => match x.not() {
+                PyResult::Some(x) => Constant::new(x),
+                _ => panic!(),
+            },
+            _ => panic!("Error note"),
         }
     }
 }
