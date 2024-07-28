@@ -1,5 +1,5 @@
-use std::fmt::{Display, Formatter};
 use crate::ast::error::object_error::{ObjBasicError, ObjMethodCallError};
+use std::fmt::{Display, Formatter};
 
 pub mod object_error;
 
@@ -28,5 +28,21 @@ impl Default for BasicError {
 pub enum ErrorType {
     BasicError(BasicError),
     ObjBasicError(ObjBasicError),
-    ObjMethodCallError(ObjMethodCallError)
+    ObjMethodCallError(ObjMethodCallError),
+}
+
+impl Display for ErrorType {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ErrorType::BasicError(x) => {
+                write!(f, "{}", x)
+            }
+            ErrorType::ObjBasicError(x) => {
+                write!(f, "{}", x)
+            }
+            ErrorType::ObjMethodCallError(x) => {
+                write!(f, "{}", x)
+            }
+        }
+    }
 }

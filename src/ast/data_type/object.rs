@@ -4,9 +4,10 @@ use crate::ast::data_type::float::float_behaviour;
 use crate::ast::data_type::int::int_behaviour;
 use crate::ast::data_type::str::str_behaviour;
 use crate::ast::error::object_error::{ObjBasicError, ObjMethodCallError};
+use crate::ast::error::ErrorType;
 use std::collections::HashMap;
 use std::error::Error;
-use crate::ast::error::ErrorType;
+use std::fmt::{Debug, Display, Formatter};
 
 /// ## struct RustObjBehavior
 /// 此结构体用来调用对应的rust函数
@@ -59,7 +60,7 @@ pub enum PyObjAttr {
 /// - attr: 对象的属性
 /// - behaviors： 对象的方法
 /// - identity： 对象唯一标识符(String)
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub struct PyObject {
     pub(crate) attr: HashMapAttr,
     behaviors: HashMapBehavior,
@@ -202,7 +203,6 @@ impl PyObject {
         method: String,
         value: Vec<PyObjAttr>,
     ) -> HashMap<String, PyObjAttr> {
-        println!("method:{},obj:{}",method.clone(),self.identity.clone());
         let mut key: Vec<String> = vec![];
         match self.behaviors.get(&method.clone()) {
             None => {}
@@ -246,13 +246,9 @@ impl PyObject {
                         .extend(x.into_iter().map(|(k, v)| (k.clone(), v.clone())));
                     PyObject::deref_py_result(*y)
                 }
-                PyResult::Err(x) => {
-                    PyResult::Err(x)
-                }
+                PyResult::Err(x) => PyResult::Err(x),
             },
-            Err(x) => {
-                PyResult::Err(ErrorType::ObjMethodCallError(x))
-            }
+            Err(x) => PyResult::Err(ErrorType::ObjMethodCallError(x)),
         }
     }
     fn return_identity(&self) -> String {
@@ -326,6 +322,17 @@ impl PyObject {
         self.call(String::from("__len__"), other)
     }
 }
+
+impl Display for PyObject {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}:{:?}", self.identity, self.attr)
+    }
+}
+impl Debug for PyObject {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} {:?}", self.identity, self.attr)
+    }
+}
 pub fn obj_to_bool(mut obj: PyObject) -> bool {
     if obj.identity == "bool" {
         match obj.get_value("x".to_string()) {
@@ -342,22 +349,20 @@ pub fn obj_to_bool(mut obj: PyObject) -> bool {
     };
     match obj.bool() {
         PyResult::Some(x) => return obj_to_bool(x),
-        PyResult::Err(x) => {
-            match x {
-                ErrorType::ObjMethodCallError(_) => {
-                    match obj.len() {
-                        PyResult::Some(y) => {
-                            return obj_to_bool(y);
-                        }
-                        _ => {}
-                    };
-                }
-                _ => {}
+        PyResult::Err(x) => match x {
+            ErrorType::ObjMethodCallError(_) => {
+                match obj.len() {
+                    PyResult::Some(y) => {
+                        return obj_to_bool(y);
+                    }
+                    _ => {}
+                };
             }
-        }
+            _ => {}
+        },
         _ => {}
     }
-    panic!("Error to convert to bool:{}",obj.identity)
+    panic!("Error to convert to bool:{}", obj.identity)
 }
 
 #[macro_export]

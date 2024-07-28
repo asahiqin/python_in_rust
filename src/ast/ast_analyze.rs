@@ -84,7 +84,12 @@ impl TokenIter {
                 if self.check(item) {
                     confirms[index] = true;
                 }
-                self.advance();
+                if !self.is_at_end() {
+                    self.advance();
+                } else {
+                    self.back(index).unwrap();
+                    return false;
+                }
             }
             if confirms.iter().filter(|&&x| x == true).count() == confirms.len() {
                 return true;
@@ -95,7 +100,6 @@ impl TokenIter {
         false
     }
     fn consume(&mut self, token_type: TokenType, _err: String) -> Result<Token, String> {
-        self.advance();
         if self.check(token_type) {
             return Ok(self.advance());
         }
@@ -163,9 +167,8 @@ impl Parser {
         Err(std::fmt::Error.into())
     }
     fn unary(&mut self) -> Result<Type, Box<dyn Error>> {
-        if self.token_iter.catch([NOT, Minus, Plus]) {
+        if self.token_iter.catch([Minus, Plus]) {
             let token = match self.token_iter.previous(1).token_type {
-                NOT => Not,
                 Plus => Operator::UAdd,
                 _ => Operator::USub,
             };
@@ -180,12 +183,13 @@ impl Parser {
     }
     fn factor(&mut self) -> Result<Type, Box<dyn Error>> {
         let expr: Type = self.unary()?;
+        //println!("{:?}", expr);
         while self.token_iter.catch([Star, Slash]) {
             let token = match self.token_iter.previous(1).token_type {
                 Star => Operator::Mult,
                 _ => Operator::Div,
             };
-            let right = self.unary()?;
+            let right = self.factor()?;
             return Ok(Type::BinOp(BinOp {
                 left: Box::new(expr),
                 op: token,
@@ -196,12 +200,13 @@ impl Parser {
     }
     fn term(&mut self) -> Result<Type, Box<dyn std::error::Error>> {
         let expr: Type = self.factor()?;
+        //println!("{:?}", expr);
         while self.token_iter.catch([Minus, Plus]) {
             let token = match self.token_iter.previous(1).token_type {
                 Minus => Operator::Sub,
                 _ => Operator::Add,
             };
-            let right = self.factor()?;
+            let right = self.term()?;
             return Ok(Type::BinOp(BinOp {
                 left: Box::new(expr),
                 op: token,
@@ -257,8 +262,23 @@ impl Parser {
         }
         Ok(expr)
     }
+    fn not_operate(&mut self) -> Result<Type, Box<dyn Error>> {
+        if self.token_iter.catch([NOT]) {
+            let token = match self.token_iter.previous(1).token_type {
+                NOT => Not,
+                _ => panic!("Error to parser"),
+            };
+            let operand = self.not_operate()?;
+            return Ok(Type::UnaryOp(UnaryOp {
+                op: token,
+                operand: Box::new(operand),
+            }));
+        }
+        let comparison = self.comparison()?;
+        return Ok(comparison);
+    }
     fn bool_operate(&mut self) -> Result<Type, Box<dyn std::error::Error>> {
-        let expr = self.comparison()?;
+        let expr = self.not_operate()?;
         while self.token_iter.catch([AND, OR]) {
             let operator = match self.token_iter.previous(1).token_type {
                 AND => Operator::And,

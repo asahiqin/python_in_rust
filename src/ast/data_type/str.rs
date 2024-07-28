@@ -10,7 +10,7 @@ use std::collections::HashMap;
 pub fn obj_str(x: String) -> PyObject {
     let name = "str".to_string();
     let mut method_vec: Vec<(String, PyObjBehaviors)> =
-        build_method!(name:name.clone();param:vec![]);
+        build_method!(name:name.clone();param:vec!["self".to_string(),"other".to_string()]);
     method_vec.append(&mut vec![build_rust_method(
         name.clone(),
         String::from("__len__"),
@@ -18,7 +18,6 @@ pub fn obj_str(x: String) -> PyObject {
     )]);
     build_method!(
         name: name;
-        param:vec!["self".to_string(),"other".to_string()];
         data:DataType::Str(x);
         method_vec:method_vec
     )

@@ -316,14 +316,17 @@ impl Calc for UnaryOp {
         match self.op.clone() {
             Operator::UAdd => match x.pos() {
                 PyResult::Some(x) => Constant::new(x),
+                PyResult::Err(x) => panic!("{}", x),
                 _ => panic!(),
             },
             Operator::USub => match x.neg() {
                 PyResult::Some(x) => Constant::new(x),
+                PyResult::Err(x) => panic!("{}", x),
                 _ => panic!(),
             },
             Operator::Not => match x.not() {
                 PyResult::Some(x) => Constant::new(x),
+                PyResult::Err(x) => panic!("{}", x),
                 _ => panic!(),
             },
             _ => panic!("Error note"),

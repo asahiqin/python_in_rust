@@ -78,8 +78,7 @@ pub(crate) fn obj_parser(
 
 #[macro_export]
 macro_rules! build_method {
-    (name:$name:expr;param:$param:expr;data:$data:expr;method_vec:$method_vec:expr) => {{
-        let param: Vec<String> = $param;
+    (name:$name:expr;data:$data:expr;method_vec:$method_vec:expr) => {{
         let name: String = $name;
         let data: DataType = $data;
         let method_vec: Vec<(String, PyObjBehaviors)>=$method_vec;
@@ -114,6 +113,14 @@ macro_rules! build_method {
             build_rust_method(name.clone(), String::from("__ne__"), param.clone()),
             build_rust_method(name.clone(), String::from("__le__"), param.clone()),
             build_rust_method(name.clone(), String::from("__ge__"), param.clone()),
+        ]
+    }};
+    (int_and_float;name:$name:expr) => {{
+        let name:String = $name;
+        vec![
+            build_rust_method(name.clone(), String::from("__bool__"), vec![]),
+        build_rust_method(name.clone(), String::from("__neg__"), vec![]),
+        build_rust_method(name.clone(), String::from("__pos__"), vec![]),
         ]
     }}
 }
