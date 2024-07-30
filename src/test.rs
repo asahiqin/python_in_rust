@@ -16,7 +16,7 @@ mod tests {
     #[test]
     fn test_scanner() {
         println!("{}", "[INFO] Test scanner".yellow());
-        let source = String::from("1+3*(3-2)==677");
+        let source = String::from("aaa\n");
         let mut scanner = build_scanner(source);
         scanner.scan();
         println!("{:#?}", scanner.token);

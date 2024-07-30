@@ -1,11 +1,6 @@
 use std::collections::HashMap;
 
-use crate::ast::scanner::TokenType::{
-    BangEqual, Comma, Dot, EqualEqual, ExactDivision, GreaterEqual, In, Is, LeftBrace, LeftParen,
-    LessEqual, Minus, Mod, Plus, Pow, RightBrace, RightParen, Semicolon, Slash, Star, AND, BANG,
-    CLASS, COLON, DEF, ELSE, EQUAL, FALSE, FOR, GREATER, IDENTIFIER, IF, LAMBDA, LESS, NOT, NUMBER,
-    OR, RETURN, SPACE, STRING, TAB, TRUE, WHILE,
-};
+use crate::ast::scanner::TokenType::{BangEqual, Comma, Dot, EqualEqual, ExactDivision, GreaterEqual, In, Is, LeftBrace, LeftParen, LessEqual, Minus, Mod, Plus, Pow, RightBrace, RightParen, Semicolon, Slash, Star, AND, BANG, CLASS, COLON, DEF, ELSE, EQUAL, FALSE, FOR, GREATER, IDENTIFIER, IF, LAMBDA, LESS, NOT, NUMBER, OR, RETURN, SPACE, STRING, TAB, TRUE, WHILE, PRINT, LineBreak};
 use crate::{count_char_occurrences, strip_quotes};
 #[allow(dead_code)]
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -58,11 +53,13 @@ pub enum TokenType {
     DEF,
     LAMBDA,
     NOT,
+    PRINT,
 
     SPACE,
     TAB,
     EOF,
     None,
+    LineBreak
 }
 
 #[derive(Debug, Default, Clone)]
@@ -129,7 +126,8 @@ pub struct Checker {
 }
 pub fn build_scanner(source: String) -> Scanner {
     let end_lineno = source.lines().count() - 1;
-    let end_col_offset = source.lines().last().unwrap().len() - 1;
+    let end = source.lines().last().unwrap().len();
+    let end_col_offset = if end >= 1 {end - 1} else { end };
     Scanner {
         source,
         lineno: 0,
@@ -151,7 +149,14 @@ impl Scanner {
     fn line_checker(&mut self) {
         match self.checker.check_method {
             CheckMethod::InLine => {
-                throw_error(self.lineno, self.col_offset + 1, "Unexpected token")
+                match self.checker.check_for {
+                    CheckFor::Identifier => {
+                        self.add_for_identifier();
+                        self.checker.is_checked = true
+                    }
+                    _ => throw_error(self.lineno, self.col_offset + 1, "Unexpected token")
+
+                }
             }
             CheckMethod::All => self.lexeme += "\n",
             _ => {}
@@ -367,9 +372,6 @@ impl Scanner {
         let mut intend: bool = true;
         'line: for (lineno, line) in lines.iter().enumerate() {
             self.lineno = lineno;
-            if !self.checker.is_checked {
-                self.line_checker()
-            }
             intend = true;
             self.col_offset = 0;
             'char: for (col_offset, char) in line.chars().enumerate() {
@@ -399,6 +401,13 @@ impl Scanner {
                     continue 'char;
                 }
                 self.recognize_token()
+            }
+            if !self.checker.is_checked {
+                self.line_checker()
+            }
+            if self.checker.is_checked {
+                self.lexeme = "\n".to_string();
+                self.add_token(LineBreak)
             }
         }
         if !self.checker.is_checked {
@@ -478,6 +487,7 @@ impl Scanner {
             ("in".to_string(), In),
             ("and".to_string(), AND),
             ("or".to_string(), OR),
+            ("print".to_string(), PRINT) // Tmp
         ];
         let keywords_map: HashMap<String, TokenType> = keyword_list.into_iter().collect();
         return match keywords_map.get(&self.lexeme.clone()) {
@@ -517,5 +527,5 @@ impl Scanner {
     }
 }
 pub fn throw_error(line: usize, col_offset: usize, message: &str) {
-    println!("[{}:{}]Error:{}", line + 1, col_offset + 1, message)
+    panic!("[{}:{}]Error:{}", line + 1, col_offset + 1, message)
 }

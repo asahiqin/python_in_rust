@@ -22,6 +22,8 @@ pub enum Type {
     Compare(Compare),
     UnaryOp(UnaryOp),
     BoolOp(BoolOp),
+    Print(Box<Print>),
+    None
 }
 
 impl Type {
@@ -38,6 +40,11 @@ impl Type {
             Type::Compare(x) => Type::Constant(x.calc()),
             Type::UnaryOp(x) => Type::Constant(x.calc()),
             Type::BoolOp(x) => Type::Constant(x.calc()),
+            Type::Print(x) => {
+                println!("{:?}", x.arg);
+                Type::None
+            }
+            Type::None => Type::None
         }
     }
 }
@@ -352,4 +359,9 @@ impl Calc for BoolOp {
             _ => panic!("Unsupported Bool Operate")
         }
     }
+}
+
+#[derive(Clone, Debug)]
+pub struct Print{
+    arg: Box<Type>
 }

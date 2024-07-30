@@ -8,10 +8,7 @@ use crate::ast::data_type::bool::obj_bool;
 use crate::ast::data_type::float::obj_float;
 use crate::ast::data_type::int::obj_int;
 use crate::ast::data_type::str::obj_str;
-use crate::ast::scanner::TokenType::{
-    BangEqual, EqualEqual, GreaterEqual, In, Is, LeftParen, LessEqual, Minus, Plus, Slash, Star,
-    AND, EOF, GREATER, LESS, NOT, OR,
-};
+use crate::ast::scanner::TokenType::{BangEqual, EqualEqual, GreaterEqual, In, Is, LeftParen, LessEqual, Minus, Plus, Slash, Star, AND, EOF, GREATER, LESS, NOT, OR, PRINT};
 use crate::ast::scanner::{Literal, Scanner, Token, TokenType};
 
 #[derive(Debug)]
@@ -140,6 +137,16 @@ impl Parser {
     }
     pub fn parser_without_panic(&mut self) -> Result<Type, Box<dyn Error>>{
         return self.expression()
+    }
+    fn statement(&mut self)-> Result<Type,  Box<dyn Error> >{
+        if self.token_iter.catch([PRINT]){
+            todo!()
+        }
+        todo!()
+    }
+    fn print_statement(&mut self){
+        let expr = self.expression().unwrap();
+        //self.token_iter.consume()
     }
     fn primary(&mut self) -> Result<Type, Box<dyn Error>> {
         if self.token_iter.catch([TokenType::TRUE]) {
