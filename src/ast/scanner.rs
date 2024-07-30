@@ -154,6 +154,10 @@ impl Scanner {
                         self.add_for_identifier();
                         self.checker.is_checked = true
                     }
+                    CheckFor::Number =>{
+                        self.add_for_number();
+                        self.checker.is_checked = true
+                    }
                     _ => throw_error(self.lineno, self.col_offset + 1, "Unexpected token")
 
                 }
@@ -265,10 +269,10 @@ impl Scanner {
         false
     }
     fn build_checker_for_others(&mut self, char: &char) -> bool {
-        if ('0'..'9').contains(&char) {
+        if ('0'..='9').contains(&char) {
             self.build_checker(String::from(""), CheckMethod::InLine, CheckFor::Number);
             return true;
-        } else if ('a'..'z').contains(char) || ('A'..'Z').contains(char) || char.clone() == '_' {
+        } else if ('a'..='z').contains(char) || ('A'..='Z').contains(char) || char.clone() == '_' {
             self.build_checker(String::from(""), CheckMethod::InLine, CheckFor::Identifier);
             return true;
         }

@@ -16,7 +16,7 @@ mod tests {
     #[test]
     fn test_scanner() {
         println!("{}", "[INFO] Test scanner".yellow());
-        let source = String::from("aaa\n");
+        let source = String::from("1+2+3+4+5+6+7+8+9");
         let mut scanner = build_scanner(source);
         scanner.scan();
         println!("{:#?}", scanner.token);
