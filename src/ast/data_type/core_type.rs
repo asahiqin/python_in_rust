@@ -218,7 +218,7 @@ pub(crate) fn custom_behaviour(obj_x: DataType, method: String, args: HashMapAtt
                     Ok(x) => {
                         match x {
                             CompareResult::Equal => obj_bool(true),
-                            _ => obj_bool(true)
+                            _ => obj_bool(false)
                         }
                     }
                     Err(_) => { panic!("Cannot Calc")}

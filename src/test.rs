@@ -9,6 +9,7 @@ mod tests {
     use crate::ast::data_type::object::obj_to_bool;
     use crate::ast::data_type::str::obj_str;
     use colored::Colorize;
+    use crate::ast::data_type::bool::obj_bool;
 
     use super::*;
 
@@ -52,13 +53,14 @@ mod tests {
         println!("{}", "[INFO] Test Object To Bool".yellow());
         assert_eq!(obj_to_bool(obj_str(String::from("hello"))), true);
         assert_eq!(obj_to_bool(obj_float(1.0)), true);
+        assert_eq!(obj_to_bool(obj_bool(true)), true);
         assert_eq!(obj_to_bool(obj_str("".to_string())), false);
     }
 
     #[test]
     fn test_compare_calc() {
         println!("{}", "[INFO] Test Compare".yellow());
-        let sources = String::from("1+3*(3+2)==16");
+        let sources = String::from("False or True and not True");
         let mut scanner = build_scanner(sources);
         scanner.scan();
         let mut parser = build_parser(scanner);

@@ -1,2 +1,2 @@
-mod repl;
+pub mod repl;
 pub mod string;

@@ -1,7 +1,7 @@
 use crate::ast::data_type::bool::obj_bool;
 use std::ops::Add;
 
-use crate::ast::data_type::object::{HashMapAttr, PyObjAttr, PyObject, PyResult};
+use crate::ast::data_type::object::{HashMapAttr, obj_to_bool, PyObjAttr, PyObject, PyResult};
 
 #[allow(dead_code)]
 #[derive(Debug)]
@@ -81,7 +81,7 @@ impl Constant {
     }
 }
 #[allow(dead_code)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Operator {
     Add,
     Sub,
@@ -201,20 +201,6 @@ pub struct Compare {
     pub(crate) comparators: Box<Vec<Type>>,
 }
 impl Compare {
-    fn get_from_bool_obj(x: PyObject) -> bool {
-        match x.get_value("x".to_string()) {
-            Ok(x) => match x {
-                PyObjAttr::Rust(y) => match y {
-                    DataType::Bool(x) => return x,
-                    _ => panic!("Not bool object"),
-                },
-                _ => panic!(),
-            },
-            Err(_) => {
-                panic!()
-            }
-        }
-    }
     fn compare(operator: Operator, mut left: PyObject, right: PyObject) -> bool {
         match operator {
             Operator::Eq => {
@@ -223,7 +209,9 @@ impl Compare {
                     vec![PyObjAttr::Interpreter(Box::from(right))],
                 );
                 match left.py_eq(hashmap) {
-                    PyResult::Some(x) => Self::get_from_bool_obj(x),
+                    PyResult::Some(x) => {
+                        obj_to_bool(x)
+                    },
                     _ => panic!(),
                 }
             }
@@ -233,7 +221,7 @@ impl Compare {
                     vec![PyObjAttr::Interpreter(Box::from(right))],
                 );
                 match left.py_ne(hashmap) {
-                    PyResult::Some(x) => Self::get_from_bool_obj(x),
+                    PyResult::Some(x) => obj_to_bool(x),
                     _ => panic!(),
                 }
             }
@@ -243,7 +231,7 @@ impl Compare {
                     vec![PyObjAttr::Interpreter(Box::from(right))],
                 );
                 match left.lt(hashmap) {
-                    PyResult::Some(x) => Self::get_from_bool_obj(x),
+                    PyResult::Some(x) => obj_to_bool(x),
                     _ => panic!(),
                 }
             }
@@ -253,7 +241,7 @@ impl Compare {
                     vec![PyObjAttr::Interpreter(Box::from(right))],
                 );
                 match left.gt(hashmap) {
-                    PyResult::Some(x) => Self::get_from_bool_obj(x),
+                    PyResult::Some(x) => obj_to_bool(x),
                     _ => panic!(),
                 }
             }
@@ -263,7 +251,7 @@ impl Compare {
                     vec![PyObjAttr::Interpreter(Box::from(right))],
                 );
                 match left.le(hashmap) {
-                    PyResult::Some(x) => Self::get_from_bool_obj(x),
+                    PyResult::Some(x) => obj_to_bool(x),
                     _ => panic!(),
                 }
             }
@@ -273,7 +261,7 @@ impl Compare {
                     vec![PyObjAttr::Interpreter(Box::from(right))],
                 );
                 match left.ge(hashmap) {
-                    PyResult::Some(x) => Self::get_from_bool_obj(x),
+                    PyResult::Some(x) => obj_to_bool(x),
                     _ => panic!(),
                 }
             }
@@ -292,8 +280,8 @@ impl Compare {
                 return true;
             }
             let right = deref_expression(comparators[index + 1].clone());
-            if Self::compare(self.ops[index].clone(), left.value, right.value) {
-                return true;
+            if !Self::compare(self.ops[index].clone(), left.value, right.value) {
+                return false;
             }
         }
         true
@@ -342,6 +330,26 @@ pub struct BoolOp {
 
 impl Calc for BoolOp {
     fn calc(&mut self) -> Constant {
-        todo!()
+        match self.op {
+            Operator::And => {
+                for i in *self.values.clone(){
+                    let i_constant = deref_expression(i);
+                    if !obj_to_bool(i_constant.value){
+                        return Constant::new(obj_bool(false))
+                    }
+                }
+                return Constant::new(obj_bool(true))
+            }
+            Operator::Or => {
+                for i in *self.values.clone(){
+                    let i_constant = deref_expression(i);
+                    if obj_to_bool(i_constant.value){
+                        return Constant::new(obj_bool(true))
+                    }
+                }
+                return Constant::new(obj_bool(false))
+            }
+            _ => panic!("Unsupported Bool Operate")
+        }
     }
 }

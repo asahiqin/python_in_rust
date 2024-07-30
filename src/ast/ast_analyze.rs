@@ -136,14 +136,17 @@ pub(crate) fn build_parser(scanner: Scanner) -> Parser {
 impl Parser {
     pub fn parser(&mut self) -> Type {
         // println!("{:?}", self.expression());
-        return self.expression();
+        return self.expression().unwrap();
+    }
+    pub fn parser_without_panic(&mut self) -> Result<Type, Box<dyn Error>>{
+        return self.expression()
     }
     fn primary(&mut self) -> Result<Type, Box<dyn Error>> {
         if self.token_iter.catch([TokenType::TRUE]) {
-            return Ok(Type::Constant(Constant::new(obj_bool(false))));
+            return Ok(Type::Constant(Constant::new(obj_bool(true))));
         }
         if self.token_iter.catch([TokenType::FALSE]) {
-            return Ok(Type::Constant(Constant::new(obj_bool(true))));
+            return Ok(Type::Constant(Constant::new(obj_bool(false))));
         }
         if self
             .token_iter
@@ -162,7 +165,7 @@ impl Parser {
             let expr = self.expression();
             self.token_iter
                 .consume(TokenType::RightParen, "".to_string())?;
-            return Ok(expr);
+            return Ok(expr.unwrap());
         }
         Err(std::fmt::Error.into())
     }
@@ -277,7 +280,7 @@ impl Parser {
         let comparison = self.comparison()?;
         return Ok(comparison);
     }
-    fn bool_operate(&mut self) -> Result<Type, Box<dyn std::error::Error>> {
+    fn bool_operate(&mut self) -> Result<Type, Box<dyn Error>> {
         let expr = self.not_operate()?;
         while self.token_iter.catch([AND, OR]) {
             let operator = match self.token_iter.previous(1).token_type {
@@ -287,7 +290,13 @@ impl Parser {
             let mut values: Vec<Type> = vec![expr];
             let value = self.bool_operate()?;
             match value {
-                Type::BoolOp(v) => values.extend(v.values.into_iter().clone()),
+                Type::BoolOp(ref v) => {
+                    if v.op == operator{
+                        values.extend(v.clone().values.into_iter().clone());
+                    }else {
+                        values.push(value.clone())
+                    }
+                },
                 _ => values.push(value),
             }
             return Ok(Type::BoolOp(BoolOp {
@@ -297,13 +306,8 @@ impl Parser {
         }
         Ok(expr)
     }
-    fn expression(&mut self) -> Type {
-        match self.bool_operate() {
-            Ok(expr) => return expr,
-            Err(e) => {
-                panic!("{:?}", e)
-            }
-        }
+    fn expression(&mut self) -> Result<Type, Box<dyn Error>> {
+        self.bool_operate()
     }
     #[allow(dead_code)]
     fn synchronize(&mut self) -> bool {

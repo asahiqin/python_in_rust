@@ -8,6 +8,7 @@ pub mod shadow {
     include!(concat!(env!("OUT_DIR"), "/shadow.rs"));
 }
 use clap::Parser;
+use crate::tools::repl::repl;
 
 #[derive(Parser)]
 #[command(name = "python")]
@@ -24,6 +25,6 @@ fn main() {
         shadow::RUST_VERSION,
         shadow::BUILD_OS
     );
-    println!("{}", detail_version);
+    repl(detail_version);
     let _cli = Cli::parse();
 }
