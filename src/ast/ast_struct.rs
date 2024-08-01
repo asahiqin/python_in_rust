@@ -1,16 +1,55 @@
+use std::fmt::Debug;
 use crate::ast::data_type::bool::obj_bool;
 use std::ops::Add;
+use crate::ast::analyze::ast_analyze::build_parser;
 
 use crate::ast::data_type::object::{HashMapAttr, obj_to_bool, PyObjAttr, PyObject, PyResult};
+use crate::ast::error::ErrorType;
+use crate::ast::scanner::build_scanner;
 
 #[allow(dead_code)]
 #[derive(Debug)]
 pub struct ASTNode {
-    pub(crate) body: Vec<Type>,
+    pub(crate) body: Vec<Box<Type>>,
     pub(crate) lineno: usize,
     pub(crate) end_lineno: usize,
     pub(crate) col_offset: usize,
     pub(crate) end_col_offset: usize,
+}
+
+impl Default for ASTNode{
+    fn default() -> Self {
+        ASTNode{
+            body:vec![],
+            lineno: 0,
+            end_lineno: 0,
+            col_offset: 0,
+            end_col_offset: 0,
+        }
+    }
+}
+impl ASTNode{
+    pub fn exec(&mut self) -> Type{
+        for (index,mut item) in self.body.iter().enumerate(){
+            match item.clone().exec() {
+                Type::None => {}
+                Type::Constant(x) => {
+                    if index + 1 == self.body.len(){
+                        return Type::Constant(x)
+                    }
+                }
+                _ => {}
+            }
+        }
+        Type::None
+    }
+    pub fn parser(&mut self,s:String){
+        let mut scanner = build_scanner(s);
+        scanner.scan();
+        println!("{:?}", scanner.token);
+        let mut parser = build_parser(scanner);
+        self.body = parser.create_vec()
+    }
 }
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
@@ -23,6 +62,7 @@ pub enum Type {
     UnaryOp(UnaryOp),
     BoolOp(BoolOp),
     Print(Box<Print>),
+    Attribute(Attribute),
     None
 }
 
@@ -36,12 +76,15 @@ impl Type {
             Type::Name(x) => {
                 todo!()
             }
+            Type::Attribute(x) => {
+                todo!()
+            }
             Type::BinOp(x) => Type::Constant(x.calc()),
             Type::Compare(x) => Type::Constant(x.calc()),
             Type::UnaryOp(x) => Type::Constant(x.calc()),
             Type::BoolOp(x) => Type::Constant(x.calc()),
             Type::Print(x) => {
-                println!("{:?}", x.arg);
+                println!("{:#?}", deref_expression(*x.arg.clone()));
                 Type::None
             }
             Type::None => Type::None
@@ -51,16 +94,33 @@ impl Type {
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct Assign {
-    pub(crate) target: Name,
+    pub(crate) target: Box<Type>,
     pub(crate) value: Box<Type>,
     pub(crate) type_comment: String,
+}
+#[derive(Debug, Clone)]
+pub enum PyCtx{
+    Store,
+    Load,
+    Del
 }
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct Name {
     pub(crate) id: String,
-    pub(crate) value: Constant,
-    pub(crate) type_comment: String,
+    pub ctx:PyCtx
+}
+impl Name{
+    pub fn ctx(&mut self, ctx:PyCtx) -> Self{
+        self.ctx = ctx;
+        return self.clone()
+    }
+}
+#[derive(Clone, Debug)]
+pub struct Attribute{
+    value: Name,
+    attr:String,
+    py_ctx: PyCtx
 }
 #[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq)]
@@ -363,5 +423,5 @@ impl Calc for BoolOp {
 
 #[derive(Clone, Debug)]
 pub struct Print{
-    arg: Box<Type>
+    pub(crate) arg: Box<Type>
 }

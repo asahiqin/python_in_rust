@@ -1,16 +1,16 @@
-use crate::ast::ast_analyze::build_parser;
 use crate::ast::ast_struct::{Calc, Compare, Constant, DataType, Operator, Type};
 use crate::ast::data_type::object::PyObjAttr;
 use crate::ast::scanner::build_scanner;
+use crate::ast::data_type::float::obj_float;
+use crate::ast::data_type::int::obj_int;
+use crate::ast::data_type::object::obj_to_bool;
+use crate::ast::data_type::str::obj_str;
+use colored::Colorize;
+use crate::ast::analyze::ast_analyze::build_parser;
+use crate::ast::data_type::bool::obj_bool;
 
 mod tests {
-    use crate::ast::data_type::float::obj_float;
-    use crate::ast::data_type::int::obj_int;
-    use crate::ast::data_type::object::obj_to_bool;
-    use crate::ast::data_type::str::obj_str;
-    use colored::Colorize;
-    use crate::ast::data_type::bool::obj_bool;
-
+    use crate::ast::ast_struct::ASTNode;
     use super::*;
 
     #[test]
@@ -65,7 +65,7 @@ mod tests {
         scanner.scan();
         let mut parser = build_parser(scanner);
         let mut nodes = parser.parser();
-        println!("{:#?}", nodes.exec());
+        println!("{:#?}", nodes.unwrap().exec());
     }
 
     #[test]
@@ -76,6 +76,14 @@ mod tests {
         scanner.scan();
         let mut parser = build_parser(scanner);
         let mut nodes = parser.parser();
+        println!("{:#?}", nodes.unwrap().exec());
+    }
+
+    #[test]
+    fn test_nodes_parser(){
+        let sources = String::from("p=1");
+        let mut nodes = ASTNode::default();
+        nodes.parser(sources);
         println!("{:#?}", nodes.exec());
     }
 }

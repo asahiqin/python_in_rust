@@ -1,8 +1,8 @@
-use std::error::Error;
 use std::io;
-use std::io::{Read, Write};
-use crate::ast::ast_analyze::build_parser;
-use crate::ast::ast_struct::Type;
+use std::io::Write;
+
+use crate::ast::analyze::ast_analyze::build_parser;
+use crate::ast::ast_struct::{ASTNode, Type};
 use crate::ast::scanner::build_scanner;
 
 pub fn repl(version: String){
@@ -16,17 +16,13 @@ pub fn repl(version: String){
         if source.as_str() == "exit()" {
             break
         }
-        let mut scanner = build_scanner(source);
-        scanner.scan();
-        let mut parser = build_parser(scanner);
-        match parser.parser_without_panic() {
-            Ok(x) => {
-                let mut nodes = x;
-                println!("{:#?}", nodes.exec());
+        let mut nodes = ASTNode::default();
+        nodes.parser(source);
+        match nodes.exec() {
+            Type::Constant(x) => {
+                println!("{:#?}",x)
             }
-            Err(x) => {
-                println!("Error at parsing: {}", x)
-            }
+            _ => {}
         }
     }
 }

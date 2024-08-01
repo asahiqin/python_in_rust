@@ -531,5 +531,5 @@ impl Scanner {
     }
 }
 pub fn throw_error(line: usize, col_offset: usize, message: &str) {
-    panic!("[{}:{}]Error:{}", line + 1, col_offset + 1, message)
+    println!("[{}:{}]Error:{}", line + 1, col_offset + 1, message)
 }
