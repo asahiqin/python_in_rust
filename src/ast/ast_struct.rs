@@ -1,26 +1,33 @@
+use std::collections::HashMap;
 use std::fmt::Debug;
-use crate::ast::data_type::bool::obj_bool;
 use std::ops::Add;
-use crate::ast::analyze::ast_analyze::build_parser;
 
-use crate::ast::data_type::object::{HashMapAttr, obj_to_bool, PyObjAttr, PyObject, PyResult};
-use crate::ast::error::ErrorType;
+use crate::ast::analyze::ast_analyze::build_parser;
+use crate::ast::data_type::bool::obj_bool;
+use crate::ast::data_type::object::{obj_to_bool, PyObjAttr, PyObject, PyResult};
+use crate::ast::namespace::{Namespace, PyEnv};
 use crate::ast::scanner::build_scanner;
 
 #[allow(dead_code)]
-#[derive(Debug)]
-pub struct ASTNode {
-    pub(crate) body: Vec<Box<Type>>,
-    pub(crate) lineno: usize,
-    pub(crate) end_lineno: usize,
-    pub(crate) col_offset: usize,
-    pub(crate) end_col_offset: usize,
+#[derive(Debug, Clone)]
+pub struct PyRootNode {
+    pub body: Vec<Box<Type>>,
+    pub py_root_env: PyEnv,
+    pub lineno: usize,
+    pub end_lineno: usize,
+    pub col_offset: usize,
+    pub end_col_offset: usize,
 }
-
-impl Default for ASTNode{
+impl Default for PyRootNode {
     fn default() -> Self {
-        ASTNode{
+        PyRootNode {
             body:vec![],
+            py_root_env: PyEnv {
+                builtin_namespace: HashMap::new(),
+                global_namespace: HashMap::new(),
+                enclosing_namespace: HashMap::new(),
+                local_namespace: HashMap::new(),
+            },
             lineno: 0,
             end_lineno: 0,
             col_offset: 0,
@@ -28,10 +35,10 @@ impl Default for ASTNode{
         }
     }
 }
-impl ASTNode{
+impl PyRootNode {
     pub fn exec(&mut self) -> Type{
         for (index,mut item) in self.body.iter().enumerate(){
-            match item.clone().exec() {
+            match item.clone().exec(self.py_root_env.clone()) {
                 Type::None => {}
                 Type::Constant(x) => {
                     if index + 1 == self.body.len(){
@@ -47,7 +54,7 @@ impl ASTNode{
         let mut scanner = build_scanner(s);
         scanner.scan();
         println!("{:?}", scanner.token);
-        let mut parser = build_parser(scanner);
+        let mut parser = build_parser(scanner,PyEnv::default());
         self.body = parser.create_vec()
     }
 }
@@ -67,10 +74,10 @@ pub enum Type {
 }
 
 impl Type {
-    pub fn exec(&mut self) -> Type {
+    pub fn exec(&mut self,env:PyEnv) -> Type {
         match self {
             Type::Assign(x) => {
-                todo!()
+                x.exec(env)
             }
             Type::Constant(x) => Type::Constant(x.clone()),
             Type::Name(x) => {
@@ -97,6 +104,24 @@ pub struct Assign {
     pub(crate) target: Box<Type>,
     pub(crate) value: Box<Type>,
     pub(crate) type_comment: String,
+    pub namespace: Namespace,
+}
+impl Assign{
+    pub fn exec(&mut self,mut env:PyEnv) -> Type{
+        match *self.target.clone() {
+            Type::Name(x) => {
+                match x.ctx {
+                    PyCtx::Store => {
+                        let value = deref_expression(*self.value.clone());
+
+                    }
+                    _ => panic!("Error to store name:{}",x.id)
+                }
+            }
+            _ => todo!()
+        }
+        Type::None
+    }
 }
 #[derive(Debug, Clone)]
 pub enum PyCtx{
@@ -108,12 +133,16 @@ pub enum PyCtx{
 #[derive(Debug, Clone)]
 pub struct Name {
     pub(crate) id: String,
+    pub namespace:Namespace,
     pub ctx:PyCtx
 }
 impl Name{
     pub fn ctx(&mut self, ctx:PyCtx) -> Self{
         self.ctx = ctx;
         return self.clone()
+    }
+    pub fn exec(&mut self, env:PyEnv) -> Constant{
+        todo!()
     }
 }
 #[derive(Clone, Debug)]

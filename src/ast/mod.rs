@@ -3,3 +3,4 @@ pub mod data_type;
 mod error;
 pub mod scanner;
 pub mod analyze;
+pub mod namespace;

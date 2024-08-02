@@ -1,6 +1,7 @@
-use crate::ast::ast_struct::{Assign, ASTNode, Name, Print, PyCtx, Type};
+use crate::ast::ast_struct::{Assign, PyRootNode, Name, Print, PyCtx, Type};
 use crate::ast::error::{BasicError, ErrorType};
 use crate::ast::error::parser_error::ParserError;
+use crate::ast::namespace::{Namespace, PyEnv};
 use crate::ast::scanner::{Literal, Scanner, Token, TokenType};
 use crate::ast::scanner::TokenType::{Dot, EOF, EQUAL, IDENTIFIER, PRINT};
 
@@ -103,23 +104,26 @@ impl TokenIter {
 #[allow(dead_code)]
 #[derive(Debug)]
 pub struct Parser {
-    ast_list: ASTNode,
+    ast_list: PyRootNode,
     pub token_iter: TokenIter,
+    namespace: Namespace
 }
-pub(crate) fn build_parser(scanner: Scanner) -> Parser {
+pub(crate) fn build_parser(scanner: Scanner, py_env: PyEnv) -> Parser {
     let lineno = scanner.lineno;
     let end_lineno = scanner.end_lineno;
     let col_offset = scanner.col_offset;
     let end_col_offset = scanner.end_col_offset;
     return Parser {
-        ast_list: ASTNode {
+        ast_list: PyRootNode{
             body: vec![],
+            py_root_env: py_env,
             lineno,
             end_lineno,
             col_offset,
             end_col_offset,
         },
         token_iter: TokenIter::new(scanner.token),
+        namespace: Namespace::Global,
     };
 }
 
@@ -169,6 +173,7 @@ impl Parser {
                     }
                     _ => panic!("Error at get name")
                 },
+                namespace:self.namespace.clone() ,
                 ctx,
             }))
         }else {
@@ -194,6 +199,7 @@ impl Parser {
                 target: Box::from(expr),
                 value: Box::from(right),
                 type_comment: "".to_string(),
+                namespace:self.namespace.clone()
             })))
         }
         expr

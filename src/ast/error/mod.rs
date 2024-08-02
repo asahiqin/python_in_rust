@@ -1,10 +1,12 @@
 use std::fmt::{Display, Formatter};
+use crate::ast::error::environment::{GetVariableError, SetVariableError};
 
 use crate::ast::error::object_error::{ObjBasicError, ObjMethodCallError};
 use crate::ast::error::parser_error::ParserError;
 
 pub mod object_error;
 pub mod parser_error;
+pub mod environment;
 
 #[derive(Clone, Debug)]
 pub struct BasicError {
@@ -49,7 +51,9 @@ pub enum ErrorType {
     BasicError(BasicError),
     ObjBasicError(ObjBasicError),
     ObjMethodCallError(ObjMethodCallError),
-    ParserError(ParserError)
+    ParserError(ParserError),
+    GetVariableError(GetVariableError),
+    SetVariableError(SetVariableError)
 }
 
 impl Display for ErrorType {
@@ -65,6 +69,12 @@ impl Display for ErrorType {
                 write!(f, "{}", x)
             }
             ErrorType::ParserError(x) => {
+                write!(f, "{}", x)
+            }
+            ErrorType::GetVariableError(x) => {
+                write!(f, "{}", x)
+            }
+            ErrorType::SetVariableError(x) => {
                 write!(f, "{}", x)
             }
         }

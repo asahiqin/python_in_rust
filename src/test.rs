@@ -8,9 +8,10 @@ use crate::ast::data_type::str::obj_str;
 use colored::Colorize;
 use crate::ast::analyze::ast_analyze::build_parser;
 use crate::ast::data_type::bool::obj_bool;
+use crate::ast::namespace::PyEnv;
 
 mod tests {
-    use crate::ast::ast_struct::ASTNode;
+    use crate::ast::ast_struct::PyRootNode;
     use super::*;
 
     #[test]
@@ -27,7 +28,7 @@ mod tests {
         let source = String::from("1 is not 2 and 2 is not 1 and 1+3*(3+2)");
         let mut scanner = build_scanner(source);
         scanner.scan();
-        let mut parser = build_parser(scanner);
+        let mut parser = build_parser(scanner,PyEnv::default());
         println!("{:#?}", parser.parser());
     }
     #[test]
@@ -63,9 +64,9 @@ mod tests {
         let sources = String::from("False or True and not True");
         let mut scanner = build_scanner(sources);
         scanner.scan();
-        let mut parser = build_parser(scanner);
+        let mut parser = build_parser(scanner,PyEnv::default());
         let mut nodes = parser.parser();
-        println!("{:#?}", nodes.unwrap().exec());
+        println!("{:#?}", nodes.unwrap().exec(PyEnv::default()));
     }
 
     #[test]
@@ -74,15 +75,15 @@ mod tests {
         let sources = String::from("-1+3*(3+2)+(-4.7)");
         let mut scanner = build_scanner(sources);
         scanner.scan();
-        let mut parser = build_parser(scanner);
+        let mut parser = build_parser(scanner,PyEnv::default());
         let mut nodes = parser.parser();
-        println!("{:#?}", nodes.unwrap().exec());
+        println!("{:#?}", nodes.unwrap().exec(PyEnv::default()));
     }
 
     #[test]
     fn test_nodes_parser(){
         let sources = String::from("p=1");
-        let mut nodes = ASTNode::default();
+        let mut nodes = PyRootNode::default();
         nodes.parser(sources);
         println!("{:#?}", nodes.exec());
     }
