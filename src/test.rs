@@ -1,17 +1,20 @@
+use colored::Colorize;
+
+use crate::ast::analyze::ast_analyze::build_parser;
 use crate::ast::ast_struct::{Calc, Compare, Constant, DataType, Operator, Type};
-use crate::ast::data_type::object::PyObjAttr;
-use crate::ast::scanner::build_scanner;
+use crate::ast::data_type::bool::obj_bool;
 use crate::ast::data_type::float::obj_float;
 use crate::ast::data_type::int::obj_int;
 use crate::ast::data_type::object::obj_to_bool;
+use crate::ast::data_type::object::PyObjAttr;
 use crate::ast::data_type::str::obj_str;
-use colored::Colorize;
-use crate::ast::analyze::ast_analyze::build_parser;
-use crate::ast::data_type::bool::obj_bool;
-use crate::ast::namespace::PyEnv;
+use crate::ast::namespace::PyNamespace;
+use crate::ast::scanner::build_scanner;
 
 mod tests {
     use crate::ast::ast_struct::PyRootNode;
+    use crate::ast::namespace::VariablePool;
+
     use super::*;
 
     #[test]
@@ -28,7 +31,7 @@ mod tests {
         let source = String::from("1 is not 2 and 2 is not 1 and 1+3*(3+2)");
         let mut scanner = build_scanner(source);
         scanner.scan();
-        let mut parser = build_parser(scanner,PyEnv::default());
+        let mut parser = build_parser(scanner, PyNamespace::default());
         println!("{:#?}", parser.parser());
     }
     #[test]
@@ -64,9 +67,9 @@ mod tests {
         let sources = String::from("False or True and not True");
         let mut scanner = build_scanner(sources);
         scanner.scan();
-        let mut parser = build_parser(scanner,PyEnv::default());
+        let mut parser = build_parser(scanner, PyNamespace::default());
         let mut nodes = parser.parser();
-        println!("{:#?}", nodes.unwrap().exec(PyEnv::default()));
+        println!("{:#?}", nodes.unwrap().exec(PyNamespace::default()));
     }
 
     #[test]
@@ -75,16 +78,28 @@ mod tests {
         let sources = String::from("-1+3*(3+2)+(-4.7)");
         let mut scanner = build_scanner(sources);
         scanner.scan();
-        let mut parser = build_parser(scanner,PyEnv::default());
+        let mut parser = build_parser(scanner, PyNamespace::default());
         let mut nodes = parser.parser();
-        println!("{:#?}", nodes.unwrap().exec(PyEnv::default()));
+        println!("{:#?}", nodes.unwrap().exec(PyNamespace::default()));
     }
 
     #[test]
-    fn test_nodes_parser(){
+    fn test_nodes_parser() {
         let sources = String::from("p=1");
         let mut nodes = PyRootNode::default();
         nodes.parser(sources);
         println!("{:#?}", nodes.exec());
+    }
+
+    #[test]
+    fn test_namespace() {
+        let mut variable_pool = VariablePool::default();
+        let uuid = variable_pool.store_new_value(obj_int(1));
+        variable_pool.store_new_value(obj_int(1));
+        variable_pool.del_variable(uuid);
+        let value = variable_pool.get_value(uuid);
+        variable_pool.update_value(uuid,obj_bool(true));
+        println!("{:?}", value);
+        println!("{:#?}", variable_pool)
     }
 }

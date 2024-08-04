@@ -1,10 +1,90 @@
-use std::collections::HashMap;
 use crate::ast::data_type::object::PyObject;
+use std::collections::HashMap;
+use uuid::Uuid;
 use crate::ast::error::environment::GetVariableError;
 use crate::ast::error::{BasicError, ErrorType};
 
-pub type PYENV=HashMap<String,PyObject>;
+type PyEnvId = HashMap<String, Uuid>;
 
+#[derive(Debug, Clone)]
+/// struct VariablePool
+/// 变量池
+/// 为什么不用Hashmap之类？为了实现双向键值对
+/// 为什么不用Bimap？因为PyObject没有实现Eq特征（哭）
+pub struct VariablePool {
+    id: Vec<Uuid>,
+    value: Vec<PyObject>,
+    count: Vec<u64>
+}
+impl Default for VariablePool {
+    fn default() -> Self {
+        VariablePool {
+            id: vec![],
+            value: vec![],
+            count: vec![],
+        }
+    }
+}
+impl VariablePool {
+    pub fn insert(&mut self, key:Uuid, value:PyObject){
+        self.id.push(key);
+        self.value.push(value);
+        self.count.push(1)
+    }
+    pub fn delete(&mut self, index: usize){
+        self.id.remove(index);
+        self.value.remove(index);
+        self.count.remove(index);
+    }
+
+    /// 存储一个新的值，如果存在就返回存在值对应的uuid，否则返回新建的uuid
+    pub fn store_new_value(&mut self, value: PyObject) -> Uuid {
+        let uuid = Uuid::new_v4();
+        while self.id.contains(&uuid) {
+            let uuid = Uuid::new_v4();
+            if !self.id.contains(&uuid){
+                break;
+            }
+        }
+        for (index,item) in self.value.iter().enumerate(){
+            if item == &value{
+                self.count[index] += 1;
+                return self.id[index]
+            }
+        }
+        self.insert(uuid,value);
+        uuid
+    }
+    pub fn update_value(&mut self,uuid: Uuid, value:PyObject){
+        if self.id.contains(&uuid){
+            for (index,item) in self.id.iter().enumerate(){
+                if item == &uuid{
+                    self.value[index] = value.clone();
+                }
+            }
+        } else {
+            self.insert(uuid,value)
+        }
+    }
+    pub fn del_variable(&mut self, uuid: Uuid){
+        for (index,item) in self.id.clone().into_iter().enumerate(){
+            if item == uuid {
+                self.count[index] -= 1;
+                if self.count[index] == 0 {
+                    self.delete(index)
+                }
+            }
+        }
+    }
+    pub fn get_value(&mut self, uuid: Uuid) -> Option<PyObject> {
+        for (index,item) in self.id.iter().enumerate(){
+            if item == &uuid{
+                return Some(self.value[index].clone())
+            }
+        }
+        None
+    }
+}
 /// Struct PyEnv
 /// 此结构体提供了四个命名空间的KV
 /// builtin：内置
@@ -12,155 +92,62 @@ pub type PYENV=HashMap<String,PyObject>;
 /// enclosing：第一层函数
 /// local：第一层函数内的嵌套函数
 #[derive(Debug, Clone)]
-pub struct PyEnv{
-    pub(crate) builtin_namespace: PYENV,
-    pub(crate) global_namespace: PYENV,
-    pub(crate) enclosing_namespace:HashMap<String,PYENV>,
-    pub(crate) local_namespace:HashMap<String, LocalNamespace>
+pub struct PyNamespace {
+    pub variable_pool: VariablePool,
+    pub(crate) builtin_namespace: PyEnvId,
+    pub(crate) global_namespace: PyEnvId,
+    pub(crate) enclosing_namespace: HashMap<String, EnclosingNamespace>,
 }
-/// enum Namespace
-/// 此枚举用来确定方法的命名空间是哪个
-#[derive(Clone, Debug)]
-pub enum Namespace{
-    Builtin,
-    Global,
-    Enclosing(String),
-    Local(LocalNamespaceId)
-}
-impl Default for PyEnv{
+impl Default for PyNamespace {
     fn default() -> Self {
-        PyEnv{
+        PyNamespace {
+            variable_pool: Default::default(),
             builtin_namespace: Default::default(),
             global_namespace: Default::default(),
             enclosing_namespace: Default::default(),
-            local_namespace: Default::default(),
         }
     }
 }
-impl PyEnv {
-    /// 获取内置的值
+#[derive(Debug, Clone)]
+pub struct EnclosingNamespace {
+    pub namespace: PyEnvId,
+    pub sub: HashMap<String, LocalNamespace>,
+}
+#[derive(Debug, Clone)]
+pub struct LocalNamespace {
+    pub namespace: PyEnvId,
+    pub sub: HashMap<String, LocalNamespace>,
+}
+impl PyNamespace{
+    fn error(){
+
+    }
     pub fn get_builtin(&mut self,id:String) -> Result<PyObject, ErrorType>{
-        match self.builtin_namespace.get(id.as_str()) {
+        match self.builtin_namespace.get(&id){
             None => {
-                Err(GetVariableError::new(BasicError::default(), id,"builtin".to_string()))
             }
             Some(x) => {
-                Ok(x.clone())
-            }
-        }
-    }
-    /// 设置内置的值
-    pub fn set_builtin(&mut self,id:String,value:PyObject){
-        self.builtin_namespace.insert(id,value);
-    }
-    /// 获取全局存储的值
-    pub fn get_global(&mut self,id:String) -> Result<PyObject, ErrorType>{
-        match self.global_namespace.get(id.as_str()) {
-            None => {
-                Err(GetVariableError::new(BasicError::default(), id, "global".to_string()))
-            }
-            Some(x) => {
-                Ok(x.clone())
-            }
-        }
-    }
-    /// 设置全局存储的值
-    pub fn set_global(&mut self,id:String,value:PyObject){
-        self.global_namespace.insert(id,value);
-    }
-    /// 获取第一层函数内定义的值
-    pub fn get_enclosing_namespace_variable(&mut self,namespace_id:String,id:String) -> Result<PyObject, ErrorType>{
-        match self.enclosing_namespace.get(namespace_id.as_str()) {
-            None => {}
-            Some(x) => {
-                match x.get(&id.clone()) {
+                match self.variable_pool.get_value(*x) {
                     None => {}
                     Some(x) => {
-                        return Ok(x.clone())
+                        return Ok(x)
                     }
                 }
             }
         }
-        Err(GetVariableError::new(BasicError::default(), id, namespace_id))
-    }
-    /// 设置第一层函数内定义的值
-    pub fn set_enclosing_namespace_variable(&mut self,namespace_id:String,id:String, value:PyObject){
-        self.enclosing_namespace.get_mut(namespace_id.as_str()).unwrap().insert(id,value);
-    }
-    /// 创建第一层函数的命名空间
-    pub fn create_enclosing_namespace(&mut self,namespace_id:String){
-        self.enclosing_namespace.insert(namespace_id,HashMap::new());
-    }
-    /// 获取第一层以下定义的函数的值
-    pub fn get_local_namespace(&mut self, local_namespace_id: LocalNamespaceId, id:String) -> Result<PyObject, ErrorType>{
-        fn get_local(local_namespace: LocalNamespace, local_namespace_id: LocalNamespaceId, id:String) -> Result<PyObject, ErrorType>{
-            match local_namespace.sub.get(&local_namespace_id.id) {
-                None => {
-                    return Err(GetVariableError::new(BasicError::default(), id, local_namespace_id.id))
-                }
-                Some(x) => {
-                    match local_namespace_id.sub {
-                        None => {
-                            return match x.clone().current.get(&id) {
-                                None => {
-                                    Err(GetVariableError::new(BasicError::default(), id, local_namespace_id.id))
-                                }
-                                Some(x) => {
-                                    return Ok(x.clone())
-                                }
-                            }
-                        }
-                        Some(y) => {
-                            get_local(*x.clone(), *y, id)
-                        }
-                    }
-                }
-            }
-        }
-        match self.local_namespace.get(&local_namespace_id.id){
-            None => {
-                return Err(GetVariableError::new(BasicError::default(), id, local_namespace_id.id))
-            }
-            Some(x) => {
-                match local_namespace_id.sub {
-                    None => {
-                        return match x.clone().current.get(&id) {
-                            None => {
-                                Err(GetVariableError::new(BasicError::default(), id, local_namespace_id.id))
-                            }
-                            Some(x) => {
-                                return Ok(x.clone())
-                            }
-                        }
-                    }
-                    Some(y) => {
-                        get_local(x.clone(), *y, id)
-                    }
-                }
-            }
-        }
+        Err(GetVariableError::new(BasicError::default(),id,"Builtin".to_string()))
     }
 }
-/// 该结构体定义了第一层函数以下的命名空间
-#[derive(Debug, Clone)]
-pub struct LocalNamespace{
-    id:String,
-    current: PYENV,
-    sub:HashMap<String,Box<LocalNamespace>>
-}
-/// 该结构体定义了第一层以下命名空间的id
-/// 逻辑：Global-> Enclosing -> Local{id,sub} -> sub:Local{id, sub} -> .....
+/// enum Namespace
+/// 此枚举用来确定方法的命名空间是哪个
+/// Builtin:内置
+/// Global：全局
+/// Enclosing：第一层嵌套
+/// Local：第一层嵌套内的嵌套，注：local数组的第一个必须是enclosing的id
 #[derive(Clone, Debug)]
-pub struct LocalNamespaceId{
-    id:String,
-    sub:Option<Box<LocalNamespaceId>>
-}
-impl Default for LocalNamespace {
-    fn default() -> Self {
-        LocalNamespace {
-            id: "".to_string(),
-            current: HashMap::new(),
-            sub: HashMap::new(),
-        }
-    }
+pub enum Namespace {
+    Builtin,
+    Global,
+    Enclosing(String),
+    Local(Vec<String>),
 }

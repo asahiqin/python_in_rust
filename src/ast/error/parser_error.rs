@@ -3,8 +3,8 @@ use std::fmt::{Display, Formatter};
 use crate::ast::error::{BasicError, ErrorType};
 
 #[derive(Clone, Debug)]
-pub struct ParserError{
-    basic_error: BasicError
+pub struct ParserError {
+    basic_error: BasicError,
 }
 
 impl Display for ParserError {
@@ -12,12 +12,8 @@ impl Display for ParserError {
         write!(f, "{},\nError at parser", self.basic_error)
     }
 }
-impl ParserError{
-    pub fn new(basic_error: BasicError) -> ErrorType{
-        return ErrorType::ParserError(
-            ParserError{
-                basic_error
-            }
-        )
+impl ParserError {
+    pub fn new(basic_error: BasicError) -> ErrorType {
+        return ErrorType::ParserError(ParserError { basic_error });
     }
 }

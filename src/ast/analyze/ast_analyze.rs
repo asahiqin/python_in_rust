@@ -1,9 +1,9 @@
-use crate::ast::ast_struct::{Assign, PyRootNode, Name, Print, PyCtx, Type};
-use crate::ast::error::{BasicError, ErrorType};
+use crate::ast::ast_struct::{Assign, Name, Print, PyCtx, PyRootNode, Type};
 use crate::ast::error::parser_error::ParserError;
-use crate::ast::namespace::{Namespace, PyEnv};
-use crate::ast::scanner::{Literal, Scanner, Token, TokenType};
+use crate::ast::error::{BasicError, ErrorType};
+use crate::ast::namespace::{Namespace, PyNamespace};
 use crate::ast::scanner::TokenType::{Dot, EOF, EQUAL, IDENTIFIER, PRINT};
+use crate::ast::scanner::{Literal, Scanner, Token, TokenType};
 
 #[derive(Debug)]
 pub struct TokenIter {
@@ -90,14 +90,19 @@ impl TokenIter {
         }
         false
     }
-    pub(crate) fn consume(&mut self, token_type: TokenType, _err: String) -> Result<Token, ErrorType> {
+    pub(crate) fn consume(
+        &mut self,
+        token_type: TokenType,
+        _err: String,
+    ) -> Result<Token, ErrorType> {
         if self.check(token_type) {
             return Ok(self.advance());
         }
-        Err(ParserError::new(BasicError::default()
-            .lineno(self.peek().lineno as u64)
-            .col_offset(self.peek().col_offset as u64)
-            .lexeme(self.peek().lexeme)
+        Err(ParserError::new(
+            BasicError::default()
+                .lineno(self.peek().lineno as u64)
+                .col_offset(self.peek().col_offset as u64)
+                .lexeme(self.peek().lexeme),
         ))
     }
 }
@@ -106,15 +111,15 @@ impl TokenIter {
 pub struct Parser {
     ast_list: PyRootNode,
     pub token_iter: TokenIter,
-    namespace: Namespace
+    namespace: Namespace,
 }
-pub(crate) fn build_parser(scanner: Scanner, py_env: PyEnv) -> Parser {
+pub(crate) fn build_parser(scanner: Scanner, py_env: PyNamespace) -> Parser {
     let lineno = scanner.lineno;
     let end_lineno = scanner.end_lineno;
     let col_offset = scanner.col_offset;
     let end_col_offset = scanner.end_col_offset;
     return Parser {
-        ast_list: PyRootNode{
+        ast_list: PyRootNode {
             body: vec![],
             py_root_env: py_env,
             lineno,
@@ -135,72 +140,72 @@ impl Parser {
     pub fn parser_without_panic(&mut self) -> Result<Type, ErrorType> {
         let x = self.statement();
         println!("{:#?}", x);
-        return x
+        return x;
     }
-    pub fn create_vec(&mut self) -> Vec<Box<Type>>{
-        let mut nodes:Vec<Box<Type>> = vec![];
-        while !self.token_iter.is_at_end(){
+    pub fn create_vec(&mut self) -> Vec<Box<Type>> {
+        let mut nodes: Vec<Box<Type>> = vec![];
+        while !self.token_iter.is_at_end() {
             match self.parser_without_panic() {
-                Ok(x) => {
-                    nodes.push(Box::from(x))
-                }
+                Ok(x) => nodes.push(Box::from(x)),
                 Err(e) => {
-                    println!("{}",e)
+                    println!("{}", e)
                 }
             }
-            while self.token_iter.catch([TokenType::LineBreak]){
-                continue
-            };
+            while self.token_iter.catch([TokenType::LineBreak]) {
+                continue;
+            }
         }
         nodes
     }
-    fn statement(&mut self)-> Result<Type,  ErrorType>{
-        if self.token_iter.catch([PRINT]){
-            return self.print_statement()
+    fn statement(&mut self) -> Result<Type, ErrorType> {
+        if self.token_iter.catch([PRINT]) {
+            return self.print_statement();
         }
-        if self.token_iter.catch([IDENTIFIER]){
+        if self.token_iter.catch([IDENTIFIER]) {
             self.token_iter.back(1).unwrap();
-            return self.assign_statement()
+            return self.assign_statement();
         }
         self.expression()
     }
-    fn identifier_statement(&mut self, ctx:PyCtx) -> Result<Type,  ErrorType>{
-        if self.token_iter.catch([IDENTIFIER]){
-            Ok(Type::Name(Name{
-                id: match self.token_iter.previous(1).literal{
-                    Literal::Identifier(x) => {
-                        x
-                    }
-                    _ => panic!("Error at get name")
+    fn identifier_statement(&mut self, ctx: PyCtx) -> Result<Type, ErrorType> {
+        if self.token_iter.catch([IDENTIFIER]) {
+            Ok(Type::Name(Name {
+                id: match self.token_iter.previous(1).literal {
+                    Literal::Identifier(x) => x,
+                    _ => panic!("Error at get name"),
                 },
-                namespace:self.namespace.clone() ,
                 ctx,
             }))
-        }else {
+        } else {
             panic!("error")
         }
     }
-    fn print_statement(&mut self) -> Result<Type,  ErrorType>{
+    fn print_statement(&mut self) -> Result<Type, ErrorType> {
         let expr = self.statement().unwrap();
-        self.token_iter.consume(TokenType::LineBreak,"".to_string())?;
-        Ok(Type::Print(Box::from(Print { arg: Box::new(expr) })))
+        self.token_iter
+            .consume(TokenType::LineBreak, "".to_string())?;
+        Ok(Type::Print(Box::from(Print {
+            arg: Box::new(expr),
+        })))
     }
-    fn assign_statement(&mut self) -> Result<Type,  ErrorType>{
+    fn assign_statement(&mut self) -> Result<Type, ErrorType> {
         let expr = self.identifier_statement(PyCtx::Load);
-        while self.token_iter.catch([EQUAL]){
+        while self.token_iter.catch([EQUAL]) {
             let right = self.statement()?;
             let expr = match expr? {
-                Type::Name(mut x) => { Type::Name(x.ctx(PyCtx::Store)) }
-                Type::Attribute(x) => { todo!() }
-                _ => todo!()
+                Type::Name(mut x) => Type::Name(x.ctx(PyCtx::Store)),
+                Type::Attribute(x) => {
+                    todo!()
+                }
+                _ => todo!(),
             };
-            self.token_iter.consume(TokenType::LineBreak,"".to_string())?;
+            self.token_iter
+                .consume(TokenType::LineBreak, "".to_string())?;
             return Ok(Type::Assign(Box::from(Assign {
                 target: Box::from(expr),
                 value: Box::from(right),
                 type_comment: "".to_string(),
-                namespace:self.namespace.clone()
-            })))
+            })));
         }
         expr
     }

@@ -1,6 +1,11 @@
 use std::collections::HashMap;
 
-use crate::ast::scanner::TokenType::{BangEqual, Comma, Dot, EqualEqual, ExactDivision, GreaterEqual, In, Is, LeftBrace, LeftParen, LessEqual, Minus, Mod, Plus, Pow, RightBrace, RightParen, Semicolon, Slash, Star, AND, BANG, CLASS, COLON, DEF, ELSE, EQUAL, FALSE, FOR, GREATER, IDENTIFIER, IF, LAMBDA, LESS, NOT, NUMBER, OR, RETURN, SPACE, STRING, TAB, TRUE, WHILE, PRINT, LineBreak};
+use crate::ast::scanner::TokenType::{
+    BangEqual, Comma, Dot, EqualEqual, ExactDivision, GreaterEqual, In, Is, LeftBrace, LeftParen,
+    LessEqual, LineBreak, Minus, Mod, Plus, Pow, RightBrace, RightParen, Semicolon, Slash, Star,
+    AND, BANG, CLASS, COLON, DEF, ELSE, EQUAL, FALSE, FOR, GREATER, IDENTIFIER, IF, LAMBDA, LESS,
+    NOT, NUMBER, OR, PRINT, RETURN, SPACE, STRING, TAB, TRUE, WHILE,
+};
 use crate::{count_char_occurrences, strip_quotes};
 #[allow(dead_code)]
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -59,7 +64,7 @@ pub enum TokenType {
     TAB,
     EOF,
     None,
-    LineBreak
+    LineBreak,
 }
 
 #[derive(Debug, Default, Clone)]
@@ -127,7 +132,7 @@ pub struct Checker {
 pub fn build_scanner(source: String) -> Scanner {
     let end_lineno = source.lines().count() - 1;
     let end = source.lines().last().unwrap().len();
-    let end_col_offset = if end >= 1 {end - 1} else { end };
+    let end_col_offset = if end >= 1 { end - 1 } else { end };
     Scanner {
         source,
         lineno: 0,
@@ -148,20 +153,17 @@ pub fn build_scanner(source: String) -> Scanner {
 impl Scanner {
     fn line_checker(&mut self) {
         match self.checker.check_method {
-            CheckMethod::InLine => {
-                match self.checker.check_for {
-                    CheckFor::Identifier => {
-                        self.add_for_identifier();
-                        self.checker.is_checked = true
-                    }
-                    CheckFor::Number =>{
-                        self.add_for_number();
-                        self.checker.is_checked = true
-                    }
-                    _ => throw_error(self.lineno, self.col_offset + 1, "Unexpected token")
-
+            CheckMethod::InLine => match self.checker.check_for {
+                CheckFor::Identifier => {
+                    self.add_for_identifier();
+                    self.checker.is_checked = true
                 }
-            }
+                CheckFor::Number => {
+                    self.add_for_number();
+                    self.checker.is_checked = true
+                }
+                _ => throw_error(self.lineno, self.col_offset + 1, "Unexpected token"),
+            },
             CheckMethod::All => self.lexeme += "\n",
             _ => {}
         }
@@ -491,7 +493,7 @@ impl Scanner {
             ("in".to_string(), In),
             ("and".to_string(), AND),
             ("or".to_string(), OR),
-            ("print".to_string(), PRINT) // Tmp
+            ("print".to_string(), PRINT), // Tmp
         ];
         let keywords_map: HashMap<String, TokenType> = keyword_list.into_iter().collect();
         return match keywords_map.get(&self.lexeme.clone()) {

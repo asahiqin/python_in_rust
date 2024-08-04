@@ -7,8 +7,8 @@ mod tools;
 pub mod shadow {
     include!(concat!(env!("OUT_DIR"), "/shadow.rs"));
 }
-use clap::Parser;
 use crate::tools::repl::repl;
+use clap::Parser;
 
 #[derive(Parser)]
 #[command(name = "python")]

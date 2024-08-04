@@ -1,12 +1,14 @@
+use crate::ast::error::environment::{
+    GetNonlocalVariableError, GetVariableError, SetVariableError,
+};
 use std::fmt::{Display, Formatter};
-use crate::ast::error::environment::{GetVariableError, SetVariableError};
 
 use crate::ast::error::object_error::{ObjBasicError, ObjMethodCallError};
 use crate::ast::error::parser_error::ParserError;
 
+pub mod environment;
 pub mod object_error;
 pub mod parser_error;
-pub mod environment;
 
 #[derive(Clone, Debug)]
 pub struct BasicError {
@@ -16,7 +18,7 @@ pub struct BasicError {
 }
 impl Display for BasicError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Error at {}:{}", self.lineno+1, self.col_offset+1)
+        write!(f, "Error at {}:{}", self.lineno + 1, self.col_offset + 1)
     }
 }
 impl Default for BasicError {
@@ -29,18 +31,18 @@ impl Default for BasicError {
     }
 }
 
-impl BasicError{
-    pub fn lexeme(&mut self,s:String) -> Self{
+impl BasicError {
+    pub fn lexeme(&mut self, s: String) -> Self {
         self.lexeme = s;
         self.clone()
     }
 
-    pub fn col_offset(&mut self, col_offset:u64) -> Self{
+    pub fn col_offset(&mut self, col_offset: u64) -> Self {
         self.col_offset = col_offset;
         self.clone()
     }
 
-    pub fn lineno(&mut self, lineno: u64) -> Self{
+    pub fn lineno(&mut self, lineno: u64) -> Self {
         self.lineno = lineno;
         self.clone()
     }
@@ -53,7 +55,8 @@ pub enum ErrorType {
     ObjMethodCallError(ObjMethodCallError),
     ParserError(ParserError),
     GetVariableError(GetVariableError),
-    SetVariableError(SetVariableError)
+    SetVariableError(SetVariableError),
+    GetNonlocalVariableError(GetNonlocalVariableError),
 }
 
 impl Display for ErrorType {
@@ -75,6 +78,9 @@ impl Display for ErrorType {
                 write!(f, "{}", x)
             }
             ErrorType::SetVariableError(x) => {
+                write!(f, "{}", x)
+            }
+            ErrorType::GetNonlocalVariableError(x) => {
                 write!(f, "{}", x)
             }
         }

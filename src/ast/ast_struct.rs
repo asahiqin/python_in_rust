@@ -5,14 +5,14 @@ use std::ops::Add;
 use crate::ast::analyze::ast_analyze::build_parser;
 use crate::ast::data_type::bool::obj_bool;
 use crate::ast::data_type::object::{obj_to_bool, PyObjAttr, PyObject, PyResult};
-use crate::ast::namespace::{Namespace, PyEnv};
+use crate::ast::namespace::{Namespace, PyNamespace};
 use crate::ast::scanner::build_scanner;
 
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct PyRootNode {
     pub body: Vec<Box<Type>>,
-    pub py_root_env: PyEnv,
+    pub py_root_env: PyNamespace,
     pub lineno: usize,
     pub end_lineno: usize,
     pub col_offset: usize,
@@ -21,12 +21,11 @@ pub struct PyRootNode {
 impl Default for PyRootNode {
     fn default() -> Self {
         PyRootNode {
-            body:vec![],
-            py_root_env: PyEnv {
+            body: vec![],
+            py_root_env: PyNamespace {
                 builtin_namespace: HashMap::new(),
                 global_namespace: HashMap::new(),
                 enclosing_namespace: HashMap::new(),
-                local_namespace: HashMap::new(),
             },
             lineno: 0,
             end_lineno: 0,
@@ -36,13 +35,13 @@ impl Default for PyRootNode {
     }
 }
 impl PyRootNode {
-    pub fn exec(&mut self) -> Type{
-        for (index,mut item) in self.body.iter().enumerate(){
+    pub fn exec(&mut self) -> Type {
+        for (index, mut item) in self.body.iter().enumerate() {
             match item.clone().exec(self.py_root_env.clone()) {
                 Type::None => {}
                 Type::Constant(x) => {
-                    if index + 1 == self.body.len(){
-                        return Type::Constant(x)
+                    if index + 1 == self.body.len() {
+                        return Type::Constant(x);
                     }
                 }
                 _ => {}
@@ -50,11 +49,11 @@ impl PyRootNode {
         }
         Type::None
     }
-    pub fn parser(&mut self,s:String){
+    pub fn parser(&mut self, s: String) {
         let mut scanner = build_scanner(s);
         scanner.scan();
         println!("{:?}", scanner.token);
-        let mut parser = build_parser(scanner,PyEnv::default());
+        let mut parser = build_parser(scanner, PyNamespace::default());
         self.body = parser.create_vec()
     }
 }
@@ -70,14 +69,14 @@ pub enum Type {
     BoolOp(BoolOp),
     Print(Box<Print>),
     Attribute(Attribute),
-    None
+    None,
 }
 
 impl Type {
-    pub fn exec(&mut self,env:PyEnv) -> Type {
+    pub fn exec(&mut self, env: PyNamespace) -> Type {
         match self {
             Type::Assign(x) => {
-                x.exec(env)
+                todo!()
             }
             Type::Constant(x) => Type::Constant(x.clone()),
             Type::Name(x) => {
@@ -94,7 +93,7 @@ impl Type {
                 println!("{:#?}", deref_expression(*x.arg.clone()));
                 Type::None
             }
-            Type::None => Type::None
+            Type::None => Type::None,
         }
     }
 }
@@ -104,52 +103,53 @@ pub struct Assign {
     pub(crate) target: Box<Type>,
     pub(crate) value: Box<Type>,
     pub(crate) type_comment: String,
-    pub namespace: Namespace,
 }
-impl Assign{
-    pub fn exec(&mut self,mut env:PyEnv) -> Type{
+impl Assign {
+    pub fn exec(&mut self, mut env: PyNamespace) -> Type {
         match *self.target.clone() {
-            Type::Name(x) => {
-                match x.ctx {
-                    PyCtx::Store => {
-                        let value = deref_expression(*self.value.clone());
-
-                    }
-                    _ => panic!("Error to store name:{}",x.id)
+            Type::Name(x) => match x.ctx {
+                PyCtx::Store => {
+                    let value = deref_expression(*self.value.clone());
                 }
-            }
-            _ => todo!()
+                _ => panic!("Error to store name:{}", x.id),
+            },
+            _ => todo!(),
         }
         Type::None
     }
 }
 #[derive(Debug, Clone)]
-pub enum PyCtx{
+pub enum PyCtx {
     Store,
     Load,
-    Del
+    Del,
 }
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct Name {
     pub(crate) id: String,
-    pub namespace:Namespace,
-    pub ctx:PyCtx
+    pub ctx: PyCtx,
 }
-impl Name{
-    pub fn ctx(&mut self, ctx:PyCtx) -> Self{
+impl Name {
+    pub fn ctx(&mut self, ctx: PyCtx) -> Self {
         self.ctx = ctx;
-        return self.clone()
+        return self.clone();
     }
-    pub fn exec(&mut self, env:PyEnv) -> Constant{
+    pub fn exec(&mut self, env: PyNamespace) -> Constant {
         todo!()
     }
 }
+
+/// 临时用，测试命名空间
+pub struct TestEmuNamespace {
+    id: String,
+    cmd: Vec<Type>,
+}
 #[derive(Clone, Debug)]
-pub struct Attribute{
+pub struct Attribute {
     value: Name,
-    attr:String,
-    py_ctx: PyCtx
+    attr: String,
+    py_ctx: PyCtx,
 }
 #[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq)]
@@ -305,9 +305,7 @@ impl Compare {
                     vec![PyObjAttr::Interpreter(Box::from(right))],
                 );
                 match left.py_eq(hashmap) {
-                    PyResult::Some(x) => {
-                        obj_to_bool(x)
-                    },
+                    PyResult::Some(x) => obj_to_bool(x),
                     _ => panic!(),
                 }
             }
@@ -428,29 +426,29 @@ impl Calc for BoolOp {
     fn calc(&mut self) -> Constant {
         match self.op {
             Operator::And => {
-                for i in *self.values.clone(){
+                for i in *self.values.clone() {
                     let i_constant = deref_expression(i);
-                    if !obj_to_bool(i_constant.value){
-                        return Constant::new(obj_bool(false))
+                    if !obj_to_bool(i_constant.value) {
+                        return Constant::new(obj_bool(false));
                     }
                 }
-                return Constant::new(obj_bool(true))
+                return Constant::new(obj_bool(true));
             }
             Operator::Or => {
-                for i in *self.values.clone(){
+                for i in *self.values.clone() {
                     let i_constant = deref_expression(i);
-                    if obj_to_bool(i_constant.value){
-                        return Constant::new(obj_bool(true))
+                    if obj_to_bool(i_constant.value) {
+                        return Constant::new(obj_bool(true));
                     }
                 }
-                return Constant::new(obj_bool(false))
+                return Constant::new(obj_bool(false));
             }
-            _ => panic!("Unsupported Bool Operate")
+            _ => panic!("Unsupported Bool Operate"),
         }
     }
 }
 
 #[derive(Clone, Debug)]
-pub struct Print{
-    pub(crate) arg: Box<Type>
+pub struct Print {
+    pub(crate) arg: Box<Type>,
 }

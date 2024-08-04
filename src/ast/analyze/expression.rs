@@ -1,16 +1,19 @@
 use crate::ast::analyze::ast_analyze::Parser;
-use crate::ast::ast_struct::{BinOp, BoolOp, Compare, Constant, Operator, Type, UnaryOp};
 use crate::ast::ast_struct::Operator::Not;
+use crate::ast::ast_struct::{BinOp, BoolOp, Compare, Constant, Operator, Type, UnaryOp};
 use crate::ast::data_type::bool::obj_bool;
 use crate::ast::data_type::float::obj_float;
 use crate::ast::data_type::int::obj_int;
 use crate::ast::data_type::str::obj_str;
-use crate::ast::error::{BasicError, ErrorType};
 use crate::ast::error::parser_error::ParserError;
+use crate::ast::error::{BasicError, ErrorType};
+use crate::ast::scanner::TokenType::{
+    BangEqual, EqualEqual, GreaterEqual, In, Is, LeftParen, LessEqual, Minus, Plus, Slash, Star,
+    AND, GREATER, LESS, NOT, OR,
+};
 use crate::ast::scanner::{Literal, TokenType};
-use crate::ast::scanner::TokenType::{AND, BangEqual, EqualEqual, GREATER, GreaterEqual, In, Is, LeftParen, LESS, LessEqual, Minus, NOT, OR, Plus, Slash, Star};
 
-impl Parser{
+impl Parser {
     fn primary(&mut self) -> Result<Type, ErrorType> {
         if self.token_iter.catch([TokenType::TRUE]) {
             return Ok(Type::Constant(Constant::new(obj_bool(true))));
@@ -37,10 +40,11 @@ impl Parser{
                 .consume(TokenType::RightParen, "".to_string())?;
             return Ok(expr.unwrap());
         }
-        Err(ParserError::new(BasicError::default()
-            .lineno(self.token_iter.peek().lineno as u64)
-            .lexeme(self.token_iter.peek().lexeme)
-            .col_offset(self.token_iter.peek().col_offset as u64)
+        Err(ParserError::new(
+            BasicError::default()
+                .lineno(self.token_iter.peek().lineno as u64)
+                .lexeme(self.token_iter.peek().lexeme)
+                .col_offset(self.token_iter.peek().col_offset as u64),
         ))
     }
     fn unary(&mut self) -> Result<Type, ErrorType> {
@@ -165,12 +169,12 @@ impl Parser{
             let value = self.bool_operate()?;
             match value {
                 Type::BoolOp(ref v) => {
-                    if v.op == operator{
+                    if v.op == operator {
                         values.extend(v.clone().values.into_iter().clone());
-                    }else {
+                    } else {
                         values.push(value.clone())
                     }
-                },
+                }
                 _ => values.push(value),
             }
             return Ok(Type::BoolOp(BoolOp {
