@@ -1,9 +1,9 @@
-use crate::ast::ast_struct::{Assign, Name, Print, PyCtx, PyRootNode, Type};
+use crate::ast::ast_struct::{Assign, If, Name, Print, PyCtx, PyRootNode, Type};
 use crate::ast::error::{BasicError, ErrorType};
 use crate::ast::error::parser_error::ParserError;
 use crate::ast::namespace::{Namespace, PyNamespace};
 use crate::ast::scanner::{Literal, Scanner, Token, TokenType};
-use crate::ast::scanner::TokenType::{EOF, EQUAL, IDENTIFIER, PRINT};
+use crate::ast::scanner::TokenType::{COLON, EOF, EQUAL, IDENTIFIER, IF, LineBreak, PRINT, SPACE, TAB};
 
 #[derive(Debug)]
 pub struct TokenIter {
@@ -37,7 +37,7 @@ impl TokenIter {
     pub(crate) fn peek(&self) -> Token {
         self.vec_token[self.current].clone()
     }
-    fn back(&mut self, offset: usize) -> Result<Token, bool> {
+    pub(crate) fn back(&mut self, offset: usize) -> Result<Token, bool> {
         match self.vec_token.get(self.current - offset) {
             None => Err(false),
             Some(i) => {
@@ -112,6 +112,8 @@ pub struct Parser {
     ast_list: PyRootNode,
     pub token_iter: TokenIter,
     namespace: Namespace,
+    pub intend:u64,
+    pub parent_intend:u64
 }
 pub(crate) fn build_parser(scanner: Scanner, py_env: PyNamespace) -> Parser {
     let lineno = scanner.lineno;
@@ -129,24 +131,37 @@ pub(crate) fn build_parser(scanner: Scanner, py_env: PyNamespace) -> Parser {
         },
         token_iter: TokenIter::new(scanner.token),
         namespace: Namespace::Global,
+        intend: 0,
+        parent_intend: 0,
     };
 }
-
 impl Parser {
     pub fn parser(&mut self) -> Result<Type, ErrorType> {
         // println!("{:?}", self.expression());
         return self.statement();
     }
+    pub fn return_err(&self) -> ErrorType{
+        ParserError::new(
+            BasicError::default()
+                .lineno(self.token_iter.peek().lineno as u64)
+                .lexeme(self.token_iter.peek().lexeme)
+                .col_offset(self.token_iter.peek().col_offset as u64),
+        )
+    }
     pub fn parser_without_panic(&mut self) -> Result<Type, ErrorType> {
         let x = self.statement();
-        println!("{:#?}", x);
         return x;
     }
     pub fn create_vec(&mut self) -> Vec<Box<Type>> {
         let mut nodes: Vec<Box<Type>> = vec![];
         while !self.token_iter.is_at_end() {
             match self.parser_without_panic() {
-                Ok(x) => nodes.push(Box::from(x)),
+                Ok(x) => {
+                    match x {
+                        Type::None => {break}
+                        _ => nodes.push(Box::from(x))
+                    }
+                },
                 Err(e) => {
                     println!("{}", e)
                 }
@@ -158,12 +173,28 @@ impl Parser {
         nodes
     }
     fn statement(&mut self) -> Result<Type, ErrorType> {
+        let mut intend:u64 = 0;
+        loop {
+            if self.token_iter.catch([TAB]){
+                intend+=4;
+            }else if self.token_iter.catch([SPACE]){
+                intend+=1
+            }else {
+                break
+            }
+        }
+        if intend == self.intend{
+
+        }else if intend==self.parent_intend {
+            return Ok(Type::None)
+        }else {
+            panic!("Error to intend")
+        }
         if self.token_iter.catch([PRINT]) {
             return self.print_statement();
         }
-        if self.token_iter.catch([IDENTIFIER]) {
-            self.token_iter.back(1).unwrap();
-            return self.assign_statement();
+        if self.token_iter.catch([IF]){
+            return self.if_statement();
         }
         self.expression()
     }
@@ -188,9 +219,9 @@ impl Parser {
             arg: Box::new(expr),
         })))
     }
-    fn assign_statement(&mut self) -> Result<Type, ErrorType> {
+    pub(crate) fn assign_statement(&mut self) -> Result<Type, ErrorType> {
         let expr = self.identifier_statement(PyCtx::Load);
-        while self.token_iter.catch([EQUAL]) {
+        while self.token_iter.catch([EQUAL]) && !self.token_iter.catch_multi([[EQUAL,EQUAL]]) {
             let right = self.statement()?;
             let expr = match expr? {
                 Type::Name(mut x) => Type::Name(x.ctx(PyCtx::Store)),
@@ -208,6 +239,22 @@ impl Parser {
             })));
         }
         expr
+    }
+    fn if_statement(&mut self) -> Result<Type, ErrorType> {
+        let test = self.statement()?;
+        while self.token_iter.catch([COLON]) {
+            if self.token_iter.catch([LineBreak]){
+
+            }else {
+                let body=self.statement()?;
+                return Ok(Type::If(Box::from(If {
+                    test: Box::from(test),
+                    body: vec![Box::from(body)],
+                    orelse: vec![],
+                })))
+            }
+        }
+        Err(self.return_err())
     }
     #[allow(dead_code)]
     fn synchronize(&mut self) -> bool {

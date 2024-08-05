@@ -5,9 +5,7 @@ use uuid::Uuid;
 
 use crate::ast::data_type::object::PyObject;
 use crate::ast::error::{BasicError, ErrorType};
-use crate::ast::error::environment::{GetVariableError, NamespaceNotFound};
-use crate::ast::error::environment::SetVariableError;
-
+use crate::ast::error::environment::{GetVariableError, NamespaceNotFound, SetVariableError};
 type PyEnvId = HashMap<String, Uuid>;
 
 #[derive(Debug, Clone)]
@@ -177,14 +175,9 @@ impl PyNamespace{
             }
         }
     }
-    pub fn set_global(&mut self,id:String,value:PyObject) -> Result<String,ErrorType>{
+    pub fn set_global(&mut self,id:String,value:PyObject){
         let uuid = self.variable_pool.store_new_value(value);
-        match self.global_namespace.insert(id.clone(),uuid) {
-            None => {
-                Err(SetVariableError::new(BasicError::default(),id,"Builtin".to_string()))
-            }
-            Some(_) => { Ok(id) }
-        }
+        self.global_namespace.insert(id.clone(),uuid);
     }
     pub fn update_global(&mut self,id:String,value:PyObject) -> Option<ErrorType>{
         match self.global_namespace.get(&id){
@@ -277,25 +270,57 @@ impl PyNamespace{
             }
         }
     }
-    pub fn set_local(&mut self,namespace_id:String, local_id:Vec<String>,id:String,value: PyObject){
+    pub fn set_local(&mut self,namespace_id:String, local_id:Vec<String>,id:String,value: PyObject) -> Option<ErrorType>{
         match self.enclosing_namespace.get_mut(&namespace_id) {
             None => {
-                self.create_enclosing_namespace(namespace_id.clone());
-                self.set_local(namespace_id,local_id,id,value);
+                return Some(GetVariableError::new(BasicError::default(),id,"".to_string()))
             }
             Some(x) => {
-                let inter = match Self::deref_local_namespace(x, local_id, 0){
+                 match Self::deref_local_namespace(x, local_id, 0){
                     Ok(x) => {
-                        x
+                        let inter = x;
+                        let uuid = self.variable_pool.store_new_value(value);
+                        inter.namespace.insert(id,uuid);
                     }
                     Err(x) => {
-                        panic!("{}", x)
+                        return Some(x)
                     }
                 };
-                let uuid = self.variable_pool.store_new_value(value);
-                inter.namespace.insert(id,uuid);
             }
         }
+        None
+    }
+    pub fn get_local(&mut self,namespace_id:String, local_id:Vec<String>,id:String) -> Result<PyObject,ErrorType>{
+        match self.enclosing_namespace.get_mut(&namespace_id) {
+            None => {}
+            Some(x) => {
+                 match Self::deref_local_namespace(x, local_id, 0) {
+                     Ok(x) => {
+                         let inter = x;
+                         match inter.namespace.get(&id){
+                             None => {}
+                             Some(x) => {
+                                 match self.variable_pool.get_value(x.clone()) {
+                                     None => {}
+                                     Some(x) => {
+                                         return Ok(x)
+                                     }
+                                 }
+                             }
+                         }
+                     }
+                     Err(x) => {
+                         return Err(x)
+                     }
+                 };
+
+            }
+        }
+        Err(GetVariableError::new(BasicError::default(),id,"".to_string()))
+    }
+
+    pub fn get_nonlocal(&mut self,namespace_id:String, local_id:Vec<String>) -> Result<(PyObject,Vec<String>),ErrorType>{
+        todo!()
     }
 }
 /// enum Namespace

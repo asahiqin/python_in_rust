@@ -7,10 +7,7 @@ use crate::ast::data_type::int::obj_int;
 use crate::ast::data_type::str::obj_str;
 use crate::ast::error::parser_error::ParserError;
 use crate::ast::error::{BasicError, ErrorType};
-use crate::ast::scanner::TokenType::{
-    BangEqual, EqualEqual, GreaterEqual, In, Is, LeftParen, LessEqual, Minus, Plus, Slash, Star,
-    AND, GREATER, LESS, NOT, OR,
-};
+use crate::ast::scanner::TokenType::{BangEqual, EqualEqual, GreaterEqual, In, Is, LeftParen, LessEqual, Minus, Plus, Slash, Star, AND, GREATER, LESS, NOT, OR, IDENTIFIER};
 use crate::ast::scanner::{Literal, TokenType};
 
 impl Parser {
@@ -34,18 +31,17 @@ impl Parser {
                 },
             )));
         }
+        if self.token_iter.catch([IDENTIFIER]) {
+            self.token_iter.back(1).unwrap();
+            return self.assign_statement();
+        }
         if self.token_iter.catch([LeftParen]) {
             let expr = self.expression();
             self.token_iter
                 .consume(TokenType::RightParen, "".to_string())?;
             return Ok(expr.unwrap());
         }
-        Err(ParserError::new(
-            BasicError::default()
-                .lineno(self.token_iter.peek().lineno as u64)
-                .lexeme(self.token_iter.peek().lexeme)
-                .col_offset(self.token_iter.peek().col_offset as u64),
-        ))
+        Err(self.return_err())
     }
     fn unary(&mut self) -> Result<Type, ErrorType> {
         if self.token_iter.catch([Minus, Plus]) {

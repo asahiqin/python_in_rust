@@ -15,6 +15,7 @@ use crate::ast::scanner::build_scanner;
 
 mod tests {
     use crate::ast::ast_struct::PyRootNode;
+    use crate::ast::namespace::Namespace;
 
     use super::*;
 
@@ -48,7 +49,7 @@ mod tests {
             ]),
         };
         assert_eq!(
-            bin.calc().value.get_value("x".to_string()).unwrap(),
+            bin.calc(&mut PyNamespace::default(),Namespace::Global).value.get_value("x".to_string()).unwrap(),
             PyObjAttr::Rust(DataType::Bool(true))
         )
     }
@@ -70,7 +71,7 @@ mod tests {
         scanner.scan();
         let mut parser = build_parser(scanner, PyNamespace::default());
         let mut nodes = parser.parser();
-        println!("{:#?}", nodes.unwrap().exec(PyNamespace::default()));
+        println!("{:#?}", nodes.unwrap().exec(&mut PyNamespace::default(),Namespace::Global));
     }
 
     #[test]
@@ -81,15 +82,15 @@ mod tests {
         scanner.scan();
         let mut parser = build_parser(scanner, PyNamespace::default());
         let mut nodes = parser.parser();
-        println!("{:#?}", nodes.unwrap().exec(PyNamespace::default()));
+        println!("{:#?}", nodes.unwrap().exec(&mut PyNamespace::default(),Namespace::Global));
     }
 
     #[test]
     fn test_nodes_parser() {
-        let sources = String::from("p=1");
+        let sources = String::from("p=1+1\na=p+1\nprint a\nif a:print True");
         let mut nodes = PyRootNode::default();
         nodes.parser(sources);
-        println!("{:#?}", nodes.exec());
+        nodes.exec();
     }
 
     #[test]
@@ -102,8 +103,15 @@ mod tests {
         namespace.create_local_namespace("test1".to_string(),vec!["test2".to_string(),"test3".to_string()]);
         namespace.set_local("test1".to_string(),vec!["test2".to_string(),"test3".to_string()],"b".to_string(),obj_int(1));
         namespace.set_local("test1".to_string(),vec!["test2".to_string()],"b".to_string(),obj_int(1));
+        let value2 = namespace.get_local("test1".to_string(),vec!["test2".to_string()],"b".to_string());
         println!("{:?}", value);
+        println!("{:?}", value2);
         println!("{:#?}", namespace)
+    }
+
+    #[test]
+    fn test_assign(){
+
     }
 
 }
