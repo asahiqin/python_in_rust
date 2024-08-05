@@ -36,7 +36,7 @@ impl Display for SetVariableError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "{},\nError at setting variable:get {} from {}",
+            "{},\nError at setting variable:set {} in {}",
             self.basic_error, self.id, self.namespace
         )
     }
@@ -51,6 +51,28 @@ impl SetVariableError {
     }
 }
 
+#[derive(Clone, Debug)]
+pub struct NamespaceNotFound {
+    basic_error: BasicError,
+    namespace: String,
+}
+impl Display for NamespaceNotFound {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{},\nError found namespace:{}",
+            self.basic_error, self.namespace
+        )
+    }
+}
+impl NamespaceNotFound {
+    pub fn new(basic_error: BasicError, namespace: String) -> ErrorType {
+        return ErrorType::NamespaceNotFound(NamespaceNotFound {
+            basic_error,
+            namespace,
+        });
+    }
+}
 #[derive(Clone, Debug)]
 pub struct GetNonlocalVariableError {
     basic_error: BasicError,

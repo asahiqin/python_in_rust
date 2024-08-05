@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use colored::Colorize;
 
 use crate::ast::analyze::ast_analyze::build_parser;
@@ -13,7 +15,6 @@ use crate::ast::scanner::build_scanner;
 
 mod tests {
     use crate::ast::ast_struct::PyRootNode;
-    use crate::ast::namespace::VariablePool;
 
     use super::*;
 
@@ -93,13 +94,16 @@ mod tests {
 
     #[test]
     fn test_namespace() {
-        let mut variable_pool = VariablePool::default();
-        let uuid = variable_pool.store_new_value(obj_int(1));
-        variable_pool.store_new_value(obj_int(1));
-        variable_pool.del_variable(uuid);
-        let value = variable_pool.get_value(uuid);
-        variable_pool.update_value(uuid,obj_bool(true));
+        let mut namespace = PyNamespace::default();
+        namespace.set_builtin("__name__".to_string(),obj_str("__main__".to_string()));
+        namespace.set_builtin("__test__".to_string(),obj_str("__main__".to_string()));
+        let value = namespace.get_builtin("__name__".to_string()).unwrap();
+        namespace.set_enclosing("a".to_string(),"b".to_string(),obj_int(1));
+        namespace.create_local_namespace("test1".to_string(),vec!["test2".to_string(),"test3".to_string()]);
+        namespace.set_local("test1".to_string(),vec!["test2".to_string(),"test3".to_string()],"b".to_string(),obj_int(1));
+        namespace.set_local("test1".to_string(),vec!["test2".to_string()],"b".to_string(),obj_int(1));
         println!("{:?}", value);
-        println!("{:#?}", variable_pool)
+        println!("{:#?}", namespace)
     }
+
 }

@@ -1,6 +1,4 @@
-use crate::ast::error::environment::{
-    GetNonlocalVariableError, GetVariableError, SetVariableError,
-};
+use crate::ast::error::environment::{GetNonlocalVariableError, GetVariableError, NamespaceNotFound, SetVariableError};
 use std::fmt::{Display, Formatter};
 
 use crate::ast::error::object_error::{ObjBasicError, ObjMethodCallError};
@@ -57,6 +55,7 @@ pub enum ErrorType {
     GetVariableError(GetVariableError),
     SetVariableError(SetVariableError),
     GetNonlocalVariableError(GetNonlocalVariableError),
+    NamespaceNotFound(NamespaceNotFound)
 }
 
 impl Display for ErrorType {
@@ -81,6 +80,9 @@ impl Display for ErrorType {
                 write!(f, "{}", x)
             }
             ErrorType::GetNonlocalVariableError(x) => {
+                write!(f, "{}", x)
+            }
+            ErrorType::NamespaceNotFound(x) => {
                 write!(f, "{}", x)
             }
         }

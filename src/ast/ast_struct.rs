@@ -5,7 +5,7 @@ use std::ops::Add;
 use crate::ast::analyze::ast_analyze::build_parser;
 use crate::ast::data_type::bool::obj_bool;
 use crate::ast::data_type::object::{obj_to_bool, PyObjAttr, PyObject, PyResult};
-use crate::ast::namespace::{Namespace, PyNamespace};
+use crate::ast::namespace::PyNamespace;
 use crate::ast::scanner::build_scanner;
 
 #[allow(dead_code)]
@@ -23,6 +23,7 @@ impl Default for PyRootNode {
         PyRootNode {
             body: vec![],
             py_root_env: PyNamespace {
+                variable_pool: Default::default(),
                 builtin_namespace: HashMap::new(),
                 global_namespace: HashMap::new(),
                 enclosing_namespace: HashMap::new(),

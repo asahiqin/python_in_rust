@@ -1,15 +1,15 @@
+use std::collections::HashMap;
+
 use crate::ast::ast_struct::DataType;
-use crate::ast::data_type::core_type::build_rust_method;
 use crate::ast::data_type::core_type::{custom_behaviour, obj_parser};
-use crate::ast::data_type::float::obj_float;
+use crate::ast::data_type::core_type::build_rust_method;
 use crate::ast::data_type::int::obj_int;
+use crate::ast::data_type::object::{HashMapAttr, PyObject, PyResult};
 use crate::ast::data_type::object::PyObjAttr;
 use crate::ast::data_type::object::PyObjBehaviors;
-use crate::ast::data_type::object::{HashMapAttr, PyObject, PyResult};
-use crate::ast::error::object_error::{ObjBasicError, ObjMethodCallError};
 use crate::ast::error::ErrorType;
+use crate::ast::error::object_error::{ObjBasicError, ObjMethodCallError};
 use crate::build_method;
-use std::collections::HashMap;
 
 pub fn obj_bool(x: bool) -> PyObject {
     let name = "bool".to_string();

@@ -1,9 +1,9 @@
 use crate::ast::ast_struct::{Assign, Name, Print, PyCtx, PyRootNode, Type};
-use crate::ast::error::parser_error::ParserError;
 use crate::ast::error::{BasicError, ErrorType};
+use crate::ast::error::parser_error::ParserError;
 use crate::ast::namespace::{Namespace, PyNamespace};
-use crate::ast::scanner::TokenType::{Dot, EOF, EQUAL, IDENTIFIER, PRINT};
 use crate::ast::scanner::{Literal, Scanner, Token, TokenType};
+use crate::ast::scanner::TokenType::{EOF, EQUAL, IDENTIFIER, PRINT};
 
 #[derive(Debug)]
 pub struct TokenIter {

@@ -1,3 +1,5 @@
+use std::error::Error;
+
 use crate::ast::ast_struct::DataType;
 use crate::ast::data_type::bool::obj_bool;
 use crate::ast::data_type::data_type_calc::CompareResult;
@@ -8,8 +10,6 @@ use crate::ast::data_type::object::{
 };
 use crate::ast::data_type::str::obj_str;
 use crate::define_obj_method;
-use std::collections::HashMap;
-use std::error::Error;
 
 pub fn build_rust_method(
     name: String,

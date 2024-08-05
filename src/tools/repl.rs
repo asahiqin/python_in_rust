@@ -1,9 +1,7 @@
 use std::io;
 use std::io::Write;
 
-use crate::ast::analyze::ast_analyze::build_parser;
 use crate::ast::ast_struct::{PyRootNode, Type};
-use crate::ast::scanner::build_scanner;
 
 pub fn repl(version: String) {
     println!("{}", version);
