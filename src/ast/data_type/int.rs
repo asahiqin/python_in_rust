@@ -9,6 +9,7 @@ use crate::ast::error::object_error::{ObjBasicError, ObjMethodCallError};
 use crate::ast::error::ErrorType;
 use crate::build_method;
 use std::collections::HashMap;
+use crate::ast::data_type::str::obj_str;
 
 pub fn obj_int(x: i64) -> PyObject {
     let name = "int".to_string();
@@ -25,7 +26,7 @@ pub fn obj_int(x: i64) -> PyObject {
 pub fn int_behaviour(method: String, args: HashMapAttr) -> PyResult {
     let data_type_obj_x: DataType = obj_parser("self".to_string(), "x".to_string(), args.clone())
         .unwrap_or_else(|x| panic!("{}", x));
-    let mut int_x: i64 = 0;
+    let int_x: i64;
     match data_type_obj_x {
         DataType::Int(x) => int_x = x,
         _ => {
@@ -46,6 +47,7 @@ pub fn int_behaviour(method: String, args: HashMapAttr) -> PyResult {
         "__bool__" => return PyResult::Some(obj_bool(data_type_obj_x.bool())),
         "__neg__" => return PyResult::Some(obj_int(-int_x)),
         "__pos__" => return PyResult::Some(obj_int(int_x)),
+        "__str__" => return PyResult::Some(obj_str(int_x.to_string())),
         _ => {}
     }
     PyResult::None

@@ -321,6 +321,10 @@ impl PyObject {
         let other: HashMap<String, PyObjAttr> = HashMap::new();
         self.call(String::from("__len__"), other)
     }
+    pub fn str(&mut self) -> PyResult{
+        let other: HashMap<String, PyObjAttr> = HashMap::new();
+        self.call(String::from("__str__"), other)
+    }
 }
 
 impl Display for PyObject {
@@ -363,6 +367,34 @@ pub fn obj_to_bool(mut obj: PyObject) -> bool {
         _ => {}
     }
     panic!("Error to convert to bool:{}", obj.identity)
+}
+pub fn obj_to_str(mut obj: PyObject) -> String{
+    if obj.identity == "str" {
+        match obj.get_value("x".to_string()) {
+            Ok(x) => match x {
+                PyObjAttr::Rust(x) => match x {
+                    DataType::Str(x) => {return x}
+                    _ => panic!("Cannot identify str values")
+                },
+                _ => {
+                    panic!("Cannot identify str values")
+                }
+            },
+            Err(_) => {
+                panic!("Cannot identify str values")
+            }
+        };
+    };
+    match obj.str() {
+        PyResult::Some(x) => {
+            return obj_to_str(x)
+        }
+        PyResult::Err(_) => {
+            return format!("{:#?}",obj)
+        }
+        _ => {}
+    }
+    panic!("Error to convert to str:{}", obj.identity)
 }
 
 #[macro_export]

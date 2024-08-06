@@ -6,6 +6,7 @@ pub enum CompareResult {
     Great,
     Equal,
     Less,
+    NotEq
 }
 
 /**
@@ -196,7 +197,7 @@ impl DataType {
                         Ok(CompareResult::Great)
                     }
                 }
-                _ => Err(std::fmt::Error.into()),
+                _ => Ok(CompareResult::NotEq),
             },
             DataType::Float(x) => match rhs {
                 DataType::Int(y) => {
@@ -226,7 +227,7 @@ impl DataType {
                         Ok(CompareResult::Great)
                     }
                 }
-                _ => Err(std::fmt::Error.into()),
+                _ => Ok(CompareResult::NotEq),
             },
             DataType::Bool(x) => match rhs {
                 DataType::Int(y) => {
@@ -256,7 +257,7 @@ impl DataType {
                         Ok(CompareResult::Great)
                     }
                 }
-                _ => Err(std::fmt::Error.into()),
+                _ => Ok(CompareResult::NotEq),
             },
             DataType::Str(x) => {
                 let x_ascii = x.into_bytes();
@@ -283,10 +284,10 @@ impl DataType {
                             Ok(CompareResult::Equal)
                         };
                     }
-                    _ => Err(std::fmt::Error.into()),
+                    _ => Ok(CompareResult::NotEq),
                 }
             }
-            _ => Err(std::fmt::Error.into()),
+            _ => Ok(CompareResult::NotEq),
         }
     }
     pub fn bool(&self) -> bool {
@@ -321,6 +322,26 @@ impl DataType {
                 }
             }
             DataType::None => false,
+        }
+    }
+    pub fn str(&self) -> String{
+        match self {
+            DataType::Int(x) => {
+                x.to_string()
+            }
+            DataType::Float(x) => {
+                x.to_string()
+            }
+            DataType::Bool(x) => {
+                x.to_string()
+            }
+            DataType::Str(x) => {
+                x.clone()
+            }
+            DataType::List(x) => {
+                todo!()
+            }
+            _ => panic!("Error to convert to str")
         }
     }
 }

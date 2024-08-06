@@ -1,14 +1,15 @@
 use std::collections::HashMap;
 
 use crate::ast::ast_struct::DataType;
-use crate::ast::data_type::core_type::{custom_behaviour, obj_parser};
 use crate::ast::data_type::core_type::build_rust_method;
+use crate::ast::data_type::core_type::{custom_behaviour, obj_parser};
 use crate::ast::data_type::int::obj_int;
-use crate::ast::data_type::object::{HashMapAttr, PyObject, PyResult};
 use crate::ast::data_type::object::PyObjAttr;
 use crate::ast::data_type::object::PyObjBehaviors;
-use crate::ast::error::ErrorType;
+use crate::ast::data_type::object::{HashMapAttr, PyObject, PyResult};
+use crate::ast::data_type::str::obj_str;
 use crate::ast::error::object_error::{ObjBasicError, ObjMethodCallError};
+use crate::ast::error::ErrorType;
 use crate::build_method;
 
 pub fn obj_bool(x: bool) -> PyObject {
@@ -25,7 +26,7 @@ pub fn obj_bool(x: bool) -> PyObject {
 pub fn bool_behaviour(method: String, args: HashMapAttr) -> PyResult {
     let obj_x: DataType = obj_parser("self".to_string(), "x".to_string(), args.clone())
         .unwrap_or_else(|x| panic!("{}", x));
-    let mut bool_x: bool = true;
+    let bool_x: bool;
     match obj_x {
         DataType::Bool(x) => bool_x = x,
         _ => {
@@ -46,6 +47,8 @@ pub fn bool_behaviour(method: String, args: HashMapAttr) -> PyResult {
         "__bool__" => return PyResult::Some(obj_bool(bool_x)),
         "__neg__" => return PyResult::Some(obj_int(if bool_x { -1 } else { 0 })),
         "__pos__" => return PyResult::Some(obj_int(if bool_x { 1 } else { 0 })),
+        "__str__" => return PyResult::Some(obj_str(bool_x.to_string())),
+
         _ => {}
     }
     PyResult::None

@@ -1,11 +1,6 @@
 use std::collections::HashMap;
 
-use crate::ast::scanner::TokenType::{
-    BangEqual, Comma, Dot, EqualEqual, ExactDivision, GreaterEqual, In, Is, LeftBrace, LeftParen,
-    LessEqual, LineBreak, Minus, Mod, Plus, Pow, RightBrace, RightParen, Semicolon, Slash, Star,
-    AND, BANG, CLASS, COLON, DEF, ELSE, EQUAL, FALSE, FOR, GREATER, IDENTIFIER, IF, LAMBDA, LESS,
-    NOT, NUMBER, OR, PRINT, RETURN, SPACE, STRING, TAB, TRUE, WHILE,
-};
+use crate::ast::scanner::TokenType::{BangEqual, Comma, Dot, EqualEqual, ExactDivision, GreaterEqual, In, Is, LeftBrace, LeftParen, LessEqual, LineBreak, Minus, Mod, Plus, Pow, RightBrace, RightParen, Semicolon, Slash, Star, AND, BANG, CLASS, COLON, DEF, ELSE, EQUAL, FALSE, FOR, GREATER, IDENTIFIER, IF, LAMBDA, LESS, NOT, NUMBER, OR, PRINT, RETURN, SPACE, STRING, TAB, TRUE, WHILE, ELIF, Break, Continue};
 use crate::{count_char_occurrences, strip_quotes};
 #[allow(dead_code)]
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -46,7 +41,10 @@ pub enum TokenType {
     // Keywords.
     AND,
     CLASS,
+    Break,
+    Continue,
     ELSE,
+    ELIF,
     FALSE,
     FOR,
     IF,
@@ -84,17 +82,6 @@ pub struct Token {
     pub col_offset: usize,
     pub(crate) literal: Literal,
     pub(crate) lexeme: String,
-}
-impl Token {
-    pub(crate) fn null() -> Token {
-        Token {
-            token_type: TokenType::None,
-            lineno: 0,
-            col_offset: 0,
-            literal: Default::default(),
-            lexeme: "".to_string(),
-        }
-    }
 }
 #[derive(Debug)]
 pub struct Scanner {
@@ -351,34 +338,34 @@ impl Scanner {
         return (false, false);
     }
 
-    fn check_intend(&mut self, mut intend: bool, string_char: String) -> (bool, bool) {
-        // first bool is bool intend's value, second is whether the loop continue
+    fn check_indent(&mut self, mut indent: bool, string_char: String) -> (bool, bool) {
+        // first bool is bool indent's value, second is whether the loop continue
         if string_char != " " && string_char != "\t" {
-            intend = false
+            indent = false
         }
-        if intend {
+        if indent {
             if string_char == " " {
                 self.add_token(SPACE);
             } else if string_char == "\t" {
                 self.add_token(TAB);
             }
-            return (intend, true);
+            return (indent, true);
         } else {
             if string_char == " " || string_char == "\t" {
-                return (intend, true);
+                return (indent, true);
             }
         }
-        (intend, false)
+        (indent, false)
     }
 }
 impl Scanner {
     pub fn scan(&mut self) {
         let binding = self.source.clone();
         let lines: Vec<&str> = binding.lines().collect();
-        let mut intend: bool = true;
+        let mut indent: bool;
         'line: for (lineno, line) in lines.iter().enumerate() {
             self.lineno = lineno;
-            intend = true;
+            indent = true;
             self.col_offset = 0;
             'char: for (col_offset, char) in line.chars().enumerate() {
                 let string_char = char.to_string();
@@ -391,9 +378,9 @@ impl Scanner {
                     }
                 }
                 // Handling indentation in string
-                let tmp_intend = self.check_intend(intend, string_char.clone());
-                intend = tmp_intend.0;
-                if tmp_intend.1 {
+                let tmp_indent = self.check_indent(indent, string_char.clone());
+                indent = tmp_indent.0;
+                if tmp_indent.1 {
                     continue;
                 }
                 self.lexeme = string_char;
@@ -493,6 +480,10 @@ impl Scanner {
             ("in".to_string(), In),
             ("and".to_string(), AND),
             ("or".to_string(), OR),
+            ("elif".to_string(), ELIF),
+            ("break".to_string(), Break),
+            ("continue".to_string(), Continue),
+            ("elif".to_string(), ELIF),
             ("print".to_string(), PRINT), // Tmp
         ];
         let keywords_map: HashMap<String, TokenType> = keyword_list.into_iter().collect();

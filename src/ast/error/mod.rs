@@ -1,4 +1,6 @@
-use crate::ast::error::environment::{GetNonlocalVariableError, GetVariableError, NamespaceNotFound, SetVariableError};
+use crate::ast::error::environment::{
+    GetNonlocalVariableError, GetVariableError, NamespaceNotFound, SetVariableError,
+};
 use std::fmt::{Display, Formatter};
 
 use crate::ast::error::object_error::{ObjBasicError, ObjMethodCallError};
@@ -45,7 +47,7 @@ impl BasicError {
         self.clone()
     }
 }
-
+#[allow(dead_code)]
 #[derive(Clone, Debug)]
 pub enum ErrorType {
     BasicError(BasicError),
@@ -55,7 +57,7 @@ pub enum ErrorType {
     GetVariableError(GetVariableError),
     SetVariableError(SetVariableError),
     GetNonlocalVariableError(GetNonlocalVariableError),
-    NamespaceNotFound(NamespaceNotFound)
+    NamespaceNotFound(NamespaceNotFound),
 }
 
 impl Display for ErrorType {

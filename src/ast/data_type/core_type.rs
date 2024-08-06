@@ -113,14 +113,15 @@ macro_rules! build_method {
             build_rust_method(name.clone(), String::from("__ne__"), param.clone()),
             build_rust_method(name.clone(), String::from("__le__"), param.clone()),
             build_rust_method(name.clone(), String::from("__ge__"), param.clone()),
+            build_rust_method(name.clone(), String::from("__str__"), vec![]),
         ]
     }};
     (int_and_float;name:$name:expr) => {{
         let name:String = $name;
         vec![
             build_rust_method(name.clone(), String::from("__bool__"), vec![]),
-        build_rust_method(name.clone(), String::from("__neg__"), vec![]),
-        build_rust_method(name.clone(), String::from("__pos__"), vec![]),
+            build_rust_method(name.clone(), String::from("__neg__"), vec![]),
+            build_rust_method(name.clone(), String::from("__pos__"), vec![]),
         ]
     }}
 }
@@ -128,7 +129,7 @@ macro_rules! build_method {
 pub(crate) fn custom_behaviour(obj_x: DataType, method: String, args: HashMapAttr) -> PyResult {
     let method_vec = [
         "__add__", "__sub__", "__mult__", "__div__", "__lt__", "__gt__", "__eq__", "__ne__",
-        "__le__", "__ge__",
+        "__le__", "__ge__"
     ];
     if method_vec
         .map(|x| return x == method.clone())

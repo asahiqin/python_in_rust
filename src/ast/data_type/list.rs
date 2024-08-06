@@ -5,6 +5,8 @@ use crate::ast::data_type::object::PyObjBehaviors;
 use crate::ast::data_type::object::PyObject;
 use crate::build_method;
 use std::collections::HashMap;
+
+#[allow(dead_code)]
 pub fn obj_list(x: Vec<PyObject>) -> PyObject {
     build_method!(
         name:"bool".to_string();

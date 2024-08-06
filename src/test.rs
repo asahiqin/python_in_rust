@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use colored::Colorize;
 
 use crate::ast::analyze::ast_analyze::build_parser;
@@ -14,6 +12,8 @@ use crate::ast::namespace::PyNamespace;
 use crate::ast::scanner::build_scanner;
 
 mod tests {
+    use std::fs;
+
     use crate::ast::ast_struct::PyRootNode;
     use crate::ast::namespace::Namespace;
 
@@ -49,7 +49,10 @@ mod tests {
             ]),
         };
         assert_eq!(
-            bin.calc(&mut PyNamespace::default(),Namespace::Global).value.get_value("x".to_string()).unwrap(),
+            bin.calc(&mut PyNamespace::default(), Namespace::Global)
+                .value
+                .get_value("x".to_string())
+                .unwrap(),
             PyObjAttr::Rust(DataType::Bool(true))
         )
     }
@@ -70,8 +73,13 @@ mod tests {
         let mut scanner = build_scanner(sources);
         scanner.scan();
         let mut parser = build_parser(scanner, PyNamespace::default());
-        let mut nodes = parser.parser();
-        println!("{:#?}", nodes.unwrap().exec(&mut PyNamespace::default(),Namespace::Global));
+        let nodes = parser.parser();
+        println!(
+            "{:#?}",
+            nodes
+                .unwrap()
+                .exec(&mut PyNamespace::default(), Namespace::Global)
+        );
     }
 
     #[test]
@@ -81,37 +89,53 @@ mod tests {
         let mut scanner = build_scanner(sources);
         scanner.scan();
         let mut parser = build_parser(scanner, PyNamespace::default());
-        let mut nodes = parser.parser();
-        println!("{:#?}", nodes.unwrap().exec(&mut PyNamespace::default(),Namespace::Global));
-    }
-
-    #[test]
-    fn test_nodes_parser() {
-        let sources = String::from("p=1+1\na=p+1\nprint a\nif a:print True");
-        let mut nodes = PyRootNode::default();
-        nodes.parser(sources);
-        nodes.exec();
+        let nodes = parser.parser();
+        println!(
+            "{:#?}",
+            nodes
+                .unwrap()
+                .exec(&mut PyNamespace::default(), Namespace::Global)
+        );
     }
 
     #[test]
     fn test_namespace() {
         let mut namespace = PyNamespace::default();
-        namespace.set_builtin("__name__".to_string(),obj_str("__main__".to_string()));
-        namespace.set_builtin("__test__".to_string(),obj_str("__main__".to_string()));
+        namespace.set_builtin("__name__".to_string(), obj_str("__main__".to_string()));
+        namespace.set_builtin("__test__".to_string(), obj_str("__main__".to_string()));
         let value = namespace.get_builtin("__name__".to_string()).unwrap();
-        namespace.set_enclosing("a".to_string(),"b".to_string(),obj_int(1));
-        namespace.create_local_namespace("test1".to_string(),vec!["test2".to_string(),"test3".to_string()]);
-        namespace.set_local("test1".to_string(),vec!["test2".to_string(),"test3".to_string()],"b".to_string(),obj_int(1));
-        namespace.set_local("test1".to_string(),vec!["test2".to_string()],"b".to_string(),obj_int(1));
-        let value2 = namespace.get_local("test1".to_string(),vec!["test2".to_string()],"b".to_string());
+        namespace.set_enclosing("a".to_string(), "b".to_string(), obj_int(1));
+        namespace.create_local_namespace(
+            "test1".to_string(),
+            vec!["test2".to_string(), "test3".to_string()],
+        );
+        namespace.set_local(
+            "test1".to_string(),
+            vec!["test2".to_string(), "test3".to_string()],
+            "b".to_string(),
+            obj_int(1),
+        );
+        namespace.set_local(
+            "test1".to_string(),
+            vec!["test2".to_string()],
+            "b".to_string(),
+            obj_int(1),
+        );
+        let value2 = namespace.get_local(
+            "test1".to_string(),
+            vec!["test2".to_string()],
+            "b".to_string(),
+        );
         println!("{:?}", value);
         println!("{:?}", value2);
         println!("{:#?}", namespace)
     }
 
     #[test]
-    fn test_assign(){
-
+    fn test_py(){
+        let source = fs::read_to_string("src/test_py/test.py").unwrap();
+        let mut nodes = PyRootNode::default();
+        nodes.parser(source);
+        nodes.exec();
     }
-
 }
