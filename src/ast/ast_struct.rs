@@ -2,8 +2,10 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 
 use crate::ast::analyze::ast_analyze::build_parser;
+use crate::ast::ast_struct::FuncArgs::ARGS;
 use crate::ast::data_type::bool::obj_bool;
 use crate::ast::data_type::object::{obj_to_bool, obj_to_str, PyObjAttr, PyObject, PyResult};
+use crate::ast::error::ErrorType;
 use crate::ast::namespace::{Namespace, PyNamespace};
 use crate::ast::scanner::build_scanner;
 
@@ -102,7 +104,7 @@ impl Type {
             Type::Print(x) => {
                 println!(
                     "{}",
-                    obj_to_str(deref_expression(*x.arg.clone(), env, current_namespace).value)
+                    obj_to_str(deref_expression(*x.arg.clone(), env, current_namespace.clone()).value, current_namespace, env)
                 );
                 Type::None
             }
@@ -165,24 +167,26 @@ impl Name {
         match namespace {
             Namespace::Builtin => match env.get_builtin(self.id.clone()) {
                 Ok(x) => return Constant::new(x),
-                Err(x) => {
-                    panic!("{}", x)
-                }
+                _ => {}
             },
             Namespace::Global => match env.get_global(self.id.clone()) {
                 Ok(x) => return Constant::new(x),
-                Err(x) => {
-                    panic!("{}", x)
-                }
+                _ => {}
             },
             Namespace::Enclosing(x) => match env.get_enclosing(x, self.id.clone()) {
                 Ok(x) => return Constant::new(x),
-                Err(x) => {
-                    panic!("{}", x)
-                }
+                _ => {}
             },
             Namespace::Local(_) => {
                 todo!()
+            }
+        }
+        match env.get_builtin(self.id.clone()) {
+            Ok(x) => {
+                return Constant::new(x)
+            }
+            Err(x) => {
+                panic!("{}", x)
             }
         }
     }
@@ -292,7 +296,7 @@ impl Calc for BinOp {
         let mut x: PyObject = deref_expression(*self.left.clone(), env, current_namespace.clone())
             .clone()
             .value;
-        let y: PyObject = deref_expression(*self.right.clone(), env, current_namespace)
+        let y: PyObject = deref_expression(*self.right.clone(), env, current_namespace.clone())
             .clone()
             .value;
         match self.op.clone() {
@@ -301,7 +305,7 @@ impl Calc for BinOp {
                     "__add__".to_string(),
                     vec![PyObjAttr::Interpreter(Box::from(y))],
                 );
-                match x.add(hashmap) {
+                match x.add(hashmap, current_namespace.clone(),env) {
                     PyResult::Some(x) => Constant::new(x),
                     _ => panic!(),
                 }
@@ -311,7 +315,7 @@ impl Calc for BinOp {
                     "__sub__".to_string(),
                     vec![PyObjAttr::Interpreter(Box::from(y))],
                 );
-                match x.sub(hashmap) {
+                match x.sub(hashmap,current_namespace.clone(),env) {
                     PyResult::Some(x) => Constant::new(x),
                     _ => panic!(),
                 }
@@ -321,7 +325,7 @@ impl Calc for BinOp {
                     "__mult__".to_string(),
                     vec![PyObjAttr::Interpreter(Box::from(y))],
                 );
-                match x.mul(hashmap) {
+                match x.mul(hashmap,current_namespace.clone(),env) {
                     PyResult::Some(x) => Constant::new(x),
                     _ => panic!(),
                 }
@@ -331,7 +335,7 @@ impl Calc for BinOp {
                     "__div__".to_string(),
                     vec![PyObjAttr::Interpreter(Box::from(y))],
                 );
-                match x.div(hashmap) {
+                match x.div(hashmap,current_namespace,env) {
                     PyResult::Some(x) => Constant::new(x),
                     _ => panic!(),
                 }
@@ -349,7 +353,7 @@ pub struct Compare {
     pub(crate) comparators: Box<Vec<Type>>,
 }
 impl Compare {
-    fn compare(operator: Operator, mut left: PyObject, right: PyObject) -> bool {
+    fn compare(operator: Operator, mut left: PyObject, right: PyObject,namespace: Namespace, env: &mut PyNamespace) -> bool {
         match operator {
             Operator::Eq => {
 
@@ -357,8 +361,8 @@ impl Compare {
                     "__eq__".to_string(),
                     vec![PyObjAttr::Interpreter(Box::from(right))],
                 );
-                match left.py_eq(hashmap) {
-                    PyResult::Some(x) => obj_to_bool(x),
+                match left.py_eq(hashmap,namespace.clone(),env) {
+                    PyResult::Some(x) => obj_to_bool(x, namespace, env),
                     _ => panic!(),
                 }
             }
@@ -367,8 +371,8 @@ impl Compare {
                     "__ne__".to_string(),
                     vec![PyObjAttr::Interpreter(Box::from(right))],
                 );
-                match left.py_ne(hashmap) {
-                    PyResult::Some(x) => obj_to_bool(x),
+                match left.py_ne(hashmap, namespace.clone(),env) {
+                    PyResult::Some(x) => obj_to_bool(x, namespace, env),
                     _ => panic!(),
                 }
             }
@@ -377,8 +381,8 @@ impl Compare {
                     "__lt__".to_string(),
                     vec![PyObjAttr::Interpreter(Box::from(right))],
                 );
-                match left.lt(hashmap) {
-                    PyResult::Some(x) => obj_to_bool(x),
+                match left.lt(hashmap, namespace.clone(), env) {
+                    PyResult::Some(x) => obj_to_bool(x, namespace, env),
                     _ => panic!(),
                 }
             }
@@ -387,8 +391,8 @@ impl Compare {
                     "__gt__".to_string(),
                     vec![PyObjAttr::Interpreter(Box::from(right))],
                 );
-                match left.gt(hashmap) {
-                    PyResult::Some(x) => obj_to_bool(x),
+                match left.gt(hashmap, namespace.clone(), env) {
+                    PyResult::Some(x) => obj_to_bool(x, namespace.clone(), env),
                     _ => panic!(),
                 }
             }
@@ -397,8 +401,8 @@ impl Compare {
                     "__le__".to_string(),
                     vec![PyObjAttr::Interpreter(Box::from(right))],
                 );
-                match left.le(hashmap) {
-                    PyResult::Some(x) => obj_to_bool(x),
+                match left.le(hashmap, namespace.clone() , env) {
+                    PyResult::Some(x) => obj_to_bool(x, namespace.clone(), env),
                     _ => panic!(),
                 }
             }
@@ -407,8 +411,8 @@ impl Compare {
                     "__ge__".to_string(),
                     vec![PyObjAttr::Interpreter(Box::from(right))],
                 );
-                match left.ge(hashmap) {
-                    PyResult::Some(x) => obj_to_bool(x),
+                match left.ge(hashmap,namespace.clone(), env) {
+                    PyResult::Some(x) => obj_to_bool(x,namespace.clone(), env),
                     _ => panic!(),
                 }
             }
@@ -431,7 +435,7 @@ impl Compare {
                 env,
                 current_namespace.clone(),
             );
-            if !Self::compare(self.ops[index].clone(), left.value, right.value) {
+            if !Self::compare(self.ops[index].clone(), left.value, right.value, current_namespace.clone(), env) {
                 return false;
             }
         }
@@ -451,21 +455,21 @@ pub struct UnaryOp {
 }
 impl Calc for UnaryOp {
     fn calc(&mut self, env: &mut PyNamespace, current_namespace: Namespace) -> Constant {
-        let mut x: PyObject = deref_expression(*self.operand.clone(), env, current_namespace)
+        let mut x: PyObject = deref_expression(*self.operand.clone(), env, current_namespace.clone())
             .clone()
             .value;
         match self.op.clone() {
-            Operator::UAdd => match x.pos() {
+            Operator::UAdd => match x.pos(current_namespace.clone(), env) {
                 PyResult::Some(x) => Constant::new(x),
                 PyResult::Err(x) => panic!("{}", x),
                 _ => panic!(),
             },
-            Operator::USub => match x.neg() {
+            Operator::USub => match x.neg(current_namespace, env) {
                 PyResult::Some(x) => Constant::new(x),
                 PyResult::Err(x) => panic!("{}", x),
                 _ => panic!(),
             },
-            Operator::Not => match x.not() {
+            Operator::Not => match x.not(current_namespace, env) {
                 PyResult::Some(x) => Constant::new(x),
                 PyResult::Err(x) => panic!("{}", x),
                 _ => panic!(),
@@ -486,7 +490,7 @@ impl Calc for BoolOp {
             Operator::And => {
                 for i in *self.values.clone() {
                     let i_constant = deref_expression(i, env, namespace.clone());
-                    if !obj_to_bool(i_constant.value) {
+                    if !obj_to_bool(i_constant.value,namespace.clone(), env) {
                         return Constant::new(obj_bool(false));
                     }
                 }
@@ -495,7 +499,7 @@ impl Calc for BoolOp {
             Operator::Or => {
                 for i in *self.values.clone() {
                     let i_constant = deref_expression(i, env, namespace.clone());
-                    if obj_to_bool(i_constant.value) {
+                    if obj_to_bool(i_constant.value, namespace.clone(), env) {
                         return Constant::new(obj_bool(true));
                     }
                 }
@@ -521,7 +525,7 @@ pub struct If {
 impl If {
     pub fn exec(&mut self, env: &mut PyNamespace, namespace: Namespace) -> Type {
         let test = deref_expression(*self.test.clone(), env, namespace.clone());
-        return if obj_to_bool(test.value) {
+        return if obj_to_bool(test.value, namespace.clone(), env) {
             exec_commands(&self.body.clone(), env, namespace.clone())
         } else {
             exec_commands(&self.orelse.clone(), env, namespace.clone())
@@ -538,10 +542,12 @@ pub struct While{
 impl While {
     pub fn exec(&mut self, env: &mut PyNamespace, namespace: Namespace) -> Type {
         let mut test = deref_expression(*self.test.clone(), env, namespace.clone());
-        while obj_to_bool(test.value.clone()) {
+        let mut break_line=true;
+        while obj_to_bool(test.value.clone(), namespace.clone(), env) {
             test = deref_expression(*self.test.clone(), env, namespace.clone());
             match exec_commands(&self.body,env,namespace.clone()){
                 Type::Break => {
+                    break_line = false;
                     break
                 }
                 Type::Continue => {
@@ -550,6 +556,35 @@ impl While {
                 _ => {}
             }
         }
+        if break_line{
+            exec_commands(&self.orelse, env, namespace.clone());
+        }
         Type::None
+    }
+}
+enum FuncArgs {
+    Keywords(Keywords),
+    ARGS(Vec<Type>)
+}
+struct Keywords{
+    pub arg:String,
+    pub value:Box<Type>
+}
+impl Keywords{
+    pub fn to_hashmap(&self){
+        match ARGS {
+            _ => {}
+        }
+    }
+}
+pub struct Call{
+    func: Box<Type>,
+    args: Box<FuncArgs>
+}
+
+impl Call{
+    pub fn exec(&mut self,namespace: Namespace, env:&mut PyNamespace) -> Type{
+        let mut obj = deref_expression(*self.func.clone(), env, namespace.clone());
+
     }
 }

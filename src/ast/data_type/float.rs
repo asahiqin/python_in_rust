@@ -10,6 +10,7 @@ use crate::ast::data_type::object::{HashMapAttr, PyObject, PyResult};
 use crate::ast::data_type::str::obj_str;
 use crate::ast::error::object_error::{ObjBasicError, ObjMethodCallError};
 use crate::ast::error::ErrorType;
+use crate::ast::namespace::{Namespace, PyNamespace};
 use crate::build_method;
 
 pub fn obj_float(x: f64) -> PyObject {
@@ -23,7 +24,7 @@ pub fn obj_float(x: f64) -> PyObject {
         method_vec:method_vec
     )
 }
-pub fn float_behaviour(method: String, args: HashMapAttr) -> PyResult {
+pub fn float_behaviour(method: String, args: HashMapAttr,namespace: Namespace,env:&mut PyNamespace) -> PyResult {
     let data_type_obj_x: DataType = obj_parser("self".to_string(), "x".to_string(), args.clone())
         .unwrap_or_else(|x| panic!("{}", x));
     let float_x: f64;

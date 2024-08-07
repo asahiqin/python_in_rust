@@ -10,6 +10,7 @@ use crate::ast::error::ErrorType;
 use crate::build_method;
 use std::collections::HashMap;
 use crate::ast::data_type::str::obj_str;
+use crate::ast::namespace::{Namespace, PyNamespace};
 
 pub fn obj_int(x: i64) -> PyObject {
     let name = "int".to_string();
@@ -23,7 +24,7 @@ pub fn obj_int(x: i64) -> PyObject {
     )
 }
 
-pub fn int_behaviour(method: String, args: HashMapAttr) -> PyResult {
+pub fn int_behaviour(method: String, args: HashMapAttr,namespace: Namespace,env:&mut PyNamespace) -> PyResult {
     let data_type_obj_x: DataType = obj_parser("self".to_string(), "x".to_string(), args.clone())
         .unwrap_or_else(|x| panic!("{}", x));
     let int_x: i64;

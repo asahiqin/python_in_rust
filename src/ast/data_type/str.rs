@@ -7,6 +7,8 @@ use crate::ast::data_type::object::PyObjBehaviors;
 use crate::ast::data_type::object::{HashMapAttr, PyObject, PyResult};
 use crate::build_method;
 use std::collections::HashMap;
+use crate::ast::namespace::{Namespace, PyNamespace};
+
 pub fn obj_str(x: String) -> PyObject {
     let name = "str".to_string();
     let mut method_vec: Vec<(String, PyObjBehaviors)> =
@@ -22,7 +24,7 @@ pub fn obj_str(x: String) -> PyObject {
         method_vec:method_vec
     )
 }
-pub fn str_behaviour(method: String, args: HashMapAttr) -> PyResult {
+pub fn str_behaviour(method: String, args: HashMapAttr,namespace: Namespace,env:&mut PyNamespace) -> PyResult {
     let obj_x: DataType = obj_parser("self".to_string(), "x".to_string(), args.clone())
         .unwrap_or_else(|x| panic!("{}", x));
     match custom_behaviour(obj_x.clone(), method.clone(), args) {

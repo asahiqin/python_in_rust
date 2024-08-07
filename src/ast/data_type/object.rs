@@ -8,6 +8,7 @@ use crate::ast::error::ErrorType;
 use std::collections::HashMap;
 use std::error::Error;
 use std::fmt::{Debug, Display, Formatter};
+use crate::ast::namespace::{Namespace, PyNamespace};
 
 /// ## struct RustObjBehavior
 /// 此结构体用来调用对应的rust函数
@@ -20,12 +21,12 @@ pub struct RustObjBehavior {
 }
 impl RustObjBehavior {
     /// 调用相关代码
-    fn exec(&self, x: HashMap<String, PyObjAttr>) -> PyResult {
+    fn exec(&self, x: HashMap<String, PyObjAttr>,namespace: Namespace,env:&mut PyNamespace) -> PyResult {
         match self.name.as_str() {
-            "int" => int_behaviour(self.method.clone(), x),
-            "float" => float_behaviour(self.method.clone(), x),
-            "bool" => bool_behaviour(self.method.clone(), x),
-            "str" => str_behaviour(self.method.clone(), x),
+            "int" => int_behaviour(self.method.clone(), x,namespace,env),
+            "float" => float_behaviour(self.method.clone(), x,namespace,env),
+            "bool" => bool_behaviour(self.method.clone(), x,namespace,env),
+            "str" => str_behaviour(self.method.clone(), x,namespace,env),
             _ => todo!(),
         }
     }
@@ -169,6 +170,7 @@ impl PyObject {
         &self,
         behavior: String,
         other: HashMapAttr,
+        namespace: Namespace,env:&mut PyNamespace
     ) -> Result<PyResult, ObjMethodCallError> {
         match self.behaviors.get(&behavior) {
             None => Err(self.create_obj_call_error(behavior)),
@@ -183,7 +185,7 @@ impl PyObject {
                     PyObjBehaviors::Interpreter => {
                         todo!()
                     }
-                    PyObjBehaviors::Rust(x) => Ok(x.exec(attr)),
+                    PyObjBehaviors::Rust(x) => Ok(x.exec(attr,namespace,env)),
                     PyObjBehaviors::None => Err(self.create_obj_call_error(behavior)),
                 }
             }
@@ -231,8 +233,8 @@ impl PyObject {
         }
         panic!("Error to convert")
     }
-    pub fn call(&mut self, behavior: String, other: HashMap<String, PyObjAttr>) -> PyResult {
-        match self.inner_call(behavior, other) {
+    pub fn call(&mut self, behavior: String, other: HashMap<String, PyObjAttr>, namespace: Namespace, env: &mut PyNamespace) -> PyResult {
+        match self.inner_call(behavior, other,namespace,env) {
             Ok(x) => match x {
                 PyResult::None => PyResult::None,
                 PyResult::Some(x) => PyResult::Some(x),
@@ -254,7 +256,7 @@ impl PyObject {
     fn return_identity(&self) -> String {
         return self.identity.clone();
     }
-    fn init(&self, args: HashMap<String, PyObjAttr>) {
+    fn init(&self, args: HashMap<String, PyObjAttr>,namespace: Namespace,env:&mut PyNamespace) {
         match self.behaviors.get("__init__") {
             None => {
                 panic!("Cannot Support Calc")
@@ -264,7 +266,7 @@ impl PyObject {
                     todo!()
                 }
                 PyObjBehaviors::Rust(x) => {
-                    x.exec(args);
+                    x.exec(args,namespace,env);
                 }
                 PyObjBehaviors::None => {
                     panic!("Cannot Init {}", self.identity)
@@ -272,58 +274,61 @@ impl PyObject {
             },
         }
     }
-    pub fn add(&mut self, other: HashMap<String, PyObjAttr>) -> PyResult {
-        self.call(String::from("__add__"), other)
+    pub fn py_call(&mut self, other: HashMap<String, PyObjAttr>,namespace: Namespace, env: &mut PyNamespace) -> PyResult{
+        self.call(String::from("__call__"), other,namespace,env)
     }
-    pub fn sub(&mut self, other: HashMap<String, PyObjAttr>) -> PyResult {
-        self.call(String::from("__sub__"), other)
+    pub fn add(&mut self, other: HashMap<String, PyObjAttr>,namespace: Namespace, env: &mut PyNamespace) -> PyResult {
+        self.call(String::from("__add__"), other,namespace,env)
     }
-    pub fn mul(&mut self, other: HashMap<String, PyObjAttr>) -> PyResult {
-        self.call(String::from("__mult__"), other)
+    pub fn sub(&mut self, other: HashMap<String, PyObjAttr>,namespace: Namespace, env: &mut PyNamespace) -> PyResult {
+        self.call(String::from("__sub__"), other,namespace,env)
     }
-    pub fn div(&mut self, other: HashMap<String, PyObjAttr>) -> PyResult {
-        self.call(String::from("__div__"), other)
+    pub fn mul(&mut self, other: HashMap<String, PyObjAttr>,namespace: Namespace, env: &mut PyNamespace) -> PyResult {
+        self.call(String::from("__mult__"), other,namespace,env)
     }
-    pub fn lt(&mut self, other: HashMap<String, PyObjAttr>) -> PyResult {
-        self.call(String::from("__lt__"), other)
+    pub fn div(&mut self, other: HashMap<String, PyObjAttr>,namespace: Namespace, env: &mut PyNamespace) -> PyResult {
+        self.call(String::from("__div__"), other,namespace,env)
     }
-    pub fn gt(&mut self, other: HashMap<String, PyObjAttr>) -> PyResult {
-        self.call(String::from("__gt__"), other)
+    pub fn lt(&mut self, other: HashMap<String, PyObjAttr>,namespace: Namespace, env: &mut PyNamespace) -> PyResult {
+        self.call(String::from("__lt__"), other,namespace,env)
     }
-    pub fn py_eq(&mut self, other: HashMap<String, PyObjAttr>) -> PyResult {
-        self.call(String::from("__eq__"), other)
+    pub fn gt(&mut self, other: HashMap<String, PyObjAttr>,namespace: Namespace, env: &mut PyNamespace) -> PyResult {
+        self.call(String::from("__gt__"), other,namespace,env)
     }
-    pub fn py_ne(&mut self, other: HashMap<String, PyObjAttr>) -> PyResult {
-        self.call(String::from("__ne__"), other)
+    pub fn py_eq(&mut self, other: HashMap<String, PyObjAttr>,namespace: Namespace, env: &mut PyNamespace) -> PyResult {
+        self.call(String::from("__eq__"), other,namespace,env)
     }
-    pub fn ge(&mut self, other: HashMap<String, PyObjAttr>) -> PyResult {
-        self.call(String::from("__ge__"), other)
+    pub fn py_ne(&mut self, other: HashMap<String, PyObjAttr>,namespace: Namespace, env: &mut PyNamespace) -> PyResult {
+        self.call(String::from("__ne__"), other,namespace,env)
     }
-    pub fn le(&mut self, other: HashMap<String, PyObjAttr>) -> PyResult {
-        self.call(String::from("__le__"), other)
+    pub fn ge(&mut self, other: HashMap<String, PyObjAttr>,namespace: Namespace, env: &mut PyNamespace) -> PyResult {
+        self.call(String::from("__ge__"), other,namespace,env)
     }
-    pub fn neg(&mut self) -> PyResult {
+    pub fn le(&mut self, other: HashMap<String, PyObjAttr>,namespace: Namespace, env: &mut PyNamespace) -> PyResult {
+        self.call(String::from("__le__"), other,namespace,env)
+    }
+    pub fn neg(&mut self,namespace: Namespace, env: &mut PyNamespace) -> PyResult {
         let other: HashMap<String, PyObjAttr> = HashMap::new();
-        self.call(String::from("__neg__"), other)
+        self.call(String::from("__neg__"), other,namespace,env)
     }
-    pub fn not(&mut self) -> PyResult {
-        PyResult::Some(obj_bool(!obj_to_bool(self.clone())))
+    pub fn not(&mut self,namespace: Namespace, env: &mut PyNamespace) -> PyResult {
+        PyResult::Some(obj_bool(!obj_to_bool(self.clone(),namespace,env)))
     }
-    pub fn pos(&mut self) -> PyResult {
+    pub fn pos(&mut self,namespace: Namespace, env: &mut PyNamespace) -> PyResult {
         let other: HashMap<String, PyObjAttr> = HashMap::new();
-        self.call(String::from("__pos__"), other)
+        self.call(String::from("__pos__"), other,namespace,env)
     }
-    pub fn bool(&mut self) -> PyResult {
+    pub fn bool(&mut self,namespace: Namespace, env: &mut PyNamespace) -> PyResult {
         let other: HashMap<String, PyObjAttr> = HashMap::new();
-        self.call(String::from("__bool__"), other)
+        self.call(String::from("__bool__"), other,namespace,env)
     }
-    pub fn len(&mut self) -> PyResult {
+    pub fn len(&mut self,namespace: Namespace, env: &mut PyNamespace) -> PyResult {
         let other: HashMap<String, PyObjAttr> = HashMap::new();
-        self.call(String::from("__len__"), other)
+        self.call(String::from("__len__"), other,namespace,env)
     }
-    pub fn str(&mut self) -> PyResult{
+    pub fn str(&mut self,namespace: Namespace, env: &mut PyNamespace) -> PyResult{
         let other: HashMap<String, PyObjAttr> = HashMap::new();
-        self.call(String::from("__str__"), other)
+        self.call(String::from("__str__"), other,namespace,env)
     }
 }
 
@@ -337,7 +342,7 @@ impl Debug for PyObject {
         write!(f, "{} {:?}", self.identity, self.attr)
     }
 }
-pub fn obj_to_bool(mut obj: PyObject) -> bool {
+pub fn obj_to_bool(mut obj: PyObject,namespace: Namespace, env: &mut PyNamespace) -> bool {
     if obj.identity == "bool" {
         match obj.get_value("x".to_string()) {
             Ok(x) => match x {
@@ -351,13 +356,13 @@ pub fn obj_to_bool(mut obj: PyObject) -> bool {
             }
         };
     };
-    match obj.bool() {
-        PyResult::Some(x) => return obj_to_bool(x),
+    match obj.bool(namespace.clone(),env) {
+        PyResult::Some(x) => return obj_to_bool(x, namespace, env),
         PyResult::Err(x) => match x {
             ErrorType::ObjMethodCallError(_) => {
-                match obj.len() {
+                match obj.len(namespace.clone(),env) {
                     PyResult::Some(y) => {
-                        return obj_to_bool(y);
+                        return obj_to_bool(y,namespace,env);
                     }
                     _ => {}
                 };
@@ -368,7 +373,7 @@ pub fn obj_to_bool(mut obj: PyObject) -> bool {
     }
     panic!("Error to convert to bool:{}", obj.identity)
 }
-pub fn obj_to_str(mut obj: PyObject) -> String{
+pub fn obj_to_str(mut obj: PyObject,namespace: Namespace, env: &mut PyNamespace) -> String{
     if obj.identity == "str" {
         match obj.get_value("x".to_string()) {
             Ok(x) => match x {
@@ -385,9 +390,9 @@ pub fn obj_to_str(mut obj: PyObject) -> String{
             }
         };
     };
-    match obj.str() {
+    match obj.str(namespace.clone(),env) {
         PyResult::Some(x) => {
-            return obj_to_str(x)
+            return obj_to_str(x, namespace, env)
         }
         PyResult::Err(_) => {
             return format!("{:#?}",obj)

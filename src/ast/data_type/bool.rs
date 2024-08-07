@@ -10,6 +10,7 @@ use crate::ast::data_type::object::{HashMapAttr, PyObject, PyResult};
 use crate::ast::data_type::str::obj_str;
 use crate::ast::error::object_error::{ObjBasicError, ObjMethodCallError};
 use crate::ast::error::ErrorType;
+use crate::ast::namespace::{Namespace, PyNamespace};
 use crate::build_method;
 
 pub fn obj_bool(x: bool) -> PyObject {
@@ -23,7 +24,7 @@ pub fn obj_bool(x: bool) -> PyObject {
         method_vec:method_vec
     )
 }
-pub fn bool_behaviour(method: String, args: HashMapAttr) -> PyResult {
+pub fn bool_behaviour(method: String, args: HashMapAttr,namespace: Namespace,env:&mut PyNamespace) -> PyResult {
     let obj_x: DataType = obj_parser("self".to_string(), "x".to_string(), args.clone())
         .unwrap_or_else(|x| panic!("{}", x));
     let bool_x: bool;

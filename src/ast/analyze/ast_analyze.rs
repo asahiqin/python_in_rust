@@ -356,6 +356,7 @@ impl Parser {
                 (indent, times) = self.test_indent();
                 let mut orelse: Vec<Box<Type>> = vec![];
                 if self.parent_indent.contains(&(indent as u64)) {
+                    orelse.append(&mut self.else_statement()?);
                     self.token_iter.back(times).unwrap();
                 }else {
                     if indent != self.indent as usize {
@@ -398,6 +399,7 @@ impl Parser {
                 (indent, times ) = self.test_indent();
                 let mut orelse: Vec<Box<Type>> = vec![];
                 if self.parent_indent.contains(&(indent as u64)) {
+                    orelse.append(&mut self.else_statement()?);
                     self.token_iter.back(times).unwrap();
                 }else{
                     if indent != self.indent as usize {

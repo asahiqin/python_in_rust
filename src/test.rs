@@ -59,11 +59,13 @@ mod tests {
 
     #[test]
     fn test_obj_to_bool() {
+        let namespace = Namespace::Global;
+        let mut env = PyNamespace::default();
         println!("{}", "[INFO] Test Object To Bool".yellow());
-        assert_eq!(obj_to_bool(obj_str(String::from("hello"))), true);
-        assert_eq!(obj_to_bool(obj_float(1.0)), true);
-        assert_eq!(obj_to_bool(obj_bool(true)), true);
-        assert_eq!(obj_to_bool(obj_str("".to_string())), false);
+        assert_eq!(obj_to_bool(obj_str(String::from("hello")),namespace.clone(),&mut env), true);
+        assert_eq!(obj_to_bool(obj_float(1.0),namespace.clone(),&mut env), true);
+        assert_eq!(obj_to_bool(obj_bool(true),namespace.clone(),&mut env), true);
+        assert_eq!(obj_to_bool(obj_str("".to_string()),namespace,&mut env), false);
     }
 
     #[test]
@@ -135,6 +137,7 @@ mod tests {
     fn test_py(){
         let source = fs::read_to_string("src/test_py/test.py").unwrap();
         let mut nodes = PyRootNode::default();
+        nodes.py_root_env.set_builtin("__name__".to_string(),obj_str("__main__".to_string()));
         nodes.parser(source);
         nodes.exec();
     }
