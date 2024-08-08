@@ -2,9 +2,10 @@ use std::collections::HashMap;
 
 use uuid::Uuid;
 
-use crate::ast::data_type::object::PyObject;
 use crate::ast::error::{BasicError, ErrorType};
 use crate::ast::error::environment::{GetVariableError, NamespaceNotFound, SetVariableError};
+use crate::data_type::object::PyObject;
+use crate::data_type::py_object::PyObject;
 
 type PyEnvId = HashMap<String, Uuid>;
 
@@ -124,6 +125,74 @@ impl Default for InterNamespace {
     }
 }
 impl PyNamespace {
+    pub fn set_any(&mut self,name:Namespace,id:String,value:PyObject) -> Uuid{
+        match name {
+            Namespace::Builtin => {
+                self.set_builtin(id,value)
+            }
+            Namespace::Global => {
+                self.set_global(id,value)
+            }
+            Namespace::Enclosing(x) => {
+                self.set_enclosing(x, id, value)
+            }
+            Namespace::Local(x, local_id) => {
+                self.set_local(x,local_id,id,value)
+            }
+        }
+    }
+    pub fn set_any_from_uuid(&mut self,name:Namespace,id:String,uuid:Uuid){
+        match name.clone() {
+            Namespace::Builtin => {
+                self.builtin_namespace.insert(id,uuid);
+            }
+            Namespace::Global => {
+                self.global_namespace.insert(id,uuid);
+            }
+            Namespace::Enclosing(x) => {
+                match self.enclosing_namespace.get_mut(&x) {
+                    None => {
+                        self.create_enclosing_namespace(x.clone());
+                        self.set_any_from_uuid(name, id, uuid);
+                    }
+                    Some(x) => {
+                        x.namespace.insert(id, uuid);
+                    }
+                }
+            }
+            Namespace::Local(x, local_id) => {
+                match self.enclosing_namespace.get_mut(&x.clone()) {
+                    None => {
+                    }
+                    Some(x) => {
+                        match Self::deref_local_namespace(x, local_id, 0) {
+                            Ok(x) => {
+                                let inter = x;
+                                inter.namespace.insert(id, uuid);
+                            }
+                            _ => {}
+                        };
+                    }
+                }
+            }
+        }
+    }
+    pub fn get_any(&mut self,namespace: Namespace,id:String) -> Result<PyObject, ErrorType>{
+        match namespace {
+            Namespace::Builtin => {
+                self.get_builtin(id)
+            }
+            Namespace::Global => {
+                self.get_global(id)
+            }
+            Namespace::Enclosing(x) => {
+                self.get_enclosing(x, id)
+            }
+            Namespace::Local(x, local_id) => {
+                self.get_local(x,local_id,id)
+            }
+        }
+    }
     fn get_from_env(&mut self, py_env_id: PyEnvId, id: &String) -> Option<PyObject> {
         match py_env_id.get(id) {
             None => {}
@@ -144,9 +213,10 @@ impl PyNamespace {
             Some(x) => Ok(x),
         }
     }
-    pub fn set_builtin(&mut self, id: String, value: PyObject) {
+    pub fn set_builtin(&mut self, id: String, value: PyObject) -> Uuid {
         let uuid = self.variable_pool.store_new_value(value);
         self.builtin_namespace.insert(id.clone(), uuid);
+        uuid
     }
     pub fn update_builtin(&mut self, id: String, value: PyObject) -> Option<ErrorType> {
         match self.builtin_namespace.get(&id) {
@@ -173,9 +243,10 @@ impl PyNamespace {
             Some(x) => Ok(x),
         }
     }
-    pub fn set_global(&mut self, id: String, value: PyObject) {
+    pub fn set_global(&mut self, id: String, value: PyObject) -> Uuid{
         let uuid = self.variable_pool.store_new_value(value);
         self.global_namespace.insert(id.clone(), uuid);
+        uuid
     }
     pub fn update_global(&mut self, id: String, value: PyObject) -> Option<ErrorType> {
         match self.global_namespace.get(&id) {
@@ -217,7 +288,7 @@ impl PyNamespace {
         self.enclosing_namespace
             .insert(namespace_id, InterNamespace::default());
     }
-    pub fn set_enclosing(&mut self, namespace_id: String, id: String, value: PyObject) {
+    pub fn set_enclosing(&mut self, namespace_id: String, id: String, value: PyObject) -> uuid{
         match self.enclosing_namespace.get_mut(&namespace_id) {
             None => {
                 self.create_enclosing_namespace(namespace_id.clone());
@@ -226,6 +297,7 @@ impl PyNamespace {
             Some(x) => {
                 let uuid = self.variable_pool.store_new_value(value);
                 x.namespace.insert(id, uuid);
+                return uuid
             }
         }
     }
@@ -273,10 +345,10 @@ impl PyNamespace {
         local_id: Vec<String>,
         id: String,
         value: PyObject,
-    ) -> Option<ErrorType> {
+    ) -> Result<Uuid,ErrorType> {
         match self.enclosing_namespace.get_mut(&namespace_id) {
             None => {
-                return Some(GetVariableError::new(
+                return Err(GetVariableError::new(
                     BasicError::default(),
                     id,
                     "".to_string(),
@@ -288,12 +360,12 @@ impl PyNamespace {
                         let inter = x;
                         let uuid = self.variable_pool.store_new_value(value);
                         inter.namespace.insert(id, uuid);
+                        return Ok(uuid)
                     }
-                    Err(x) => return Some(x),
+                    Err(x) => return Err(x),
                 };
             }
         }
-        None
     }
     pub fn get_local(
         &mut self,
@@ -345,5 +417,5 @@ pub enum Namespace {
     Builtin,
     Global,
     Enclosing(String),
-    Local(Vec<String>),
+    Local(String,Vec<String>),
 }

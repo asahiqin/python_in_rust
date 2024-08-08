@@ -2,12 +2,6 @@ use colored::Colorize;
 
 use crate::ast::analyze::ast_analyze::build_parser;
 use crate::ast::ast_struct::{Calc, Compare, Constant, DataType, Operator, Type};
-use crate::ast::data_type::bool::obj_bool;
-use crate::ast::data_type::float::obj_float;
-use crate::ast::data_type::int::obj_int;
-use crate::ast::data_type::object::obj_to_bool;
-use crate::ast::data_type::object::PyObjAttr;
-use crate::ast::data_type::str::obj_str;
 use crate::ast::namespace::PyNamespace;
 use crate::ast::scanner::build_scanner;
 
@@ -16,6 +10,11 @@ mod tests {
 
     use crate::ast::ast_struct::PyRootNode;
     use crate::ast::namespace::Namespace;
+    use crate::data_type::bool::obj_bool;
+    use crate::data_type::float::obj_float;
+    use crate::data_type::int::obj_int;
+    use crate::data_type::object::{obj_to_bool, PyObjAttr};
+    use crate::data_type::str::obj_str;
 
     use super::*;
 

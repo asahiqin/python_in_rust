@@ -3,11 +3,10 @@ use std::fmt::Debug;
 
 use crate::ast::analyze::ast_analyze::build_parser;
 use crate::ast::ast_struct::FuncArgs::ARGS;
-use crate::ast::data_type::bool::obj_bool;
-use crate::ast::data_type::object::{obj_to_bool, obj_to_str, PyObjAttr, PyObject, PyResult};
-use crate::ast::error::ErrorType;
 use crate::ast::namespace::{Namespace, PyNamespace};
 use crate::ast::scanner::build_scanner;
+use crate::data_type::bool::obj_bool;
+use crate::data_type::object::{obj_to_bool, obj_to_str, PyObjAttr, PyObject, PyResult};
 
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
@@ -47,7 +46,7 @@ impl PyRootNode {
         self.body = parser.create_vec()
     }
 }
-fn exec_commands(
+pub fn exec_commands(
     command: &Vec<Box<Type>>,
     namespace: &mut PyNamespace,
     current_namespace: Namespace,
@@ -584,7 +583,7 @@ pub struct Call{
 
 impl Call{
     pub fn exec(&mut self,namespace: Namespace, env:&mut PyNamespace) -> Type{
-        let mut obj = deref_expression(*self.func.clone(), env, namespace.clone());
-
+        //let mut obj = deref_expression(*self.func.clone(), env, namespace.clone());
+        todo!()
     }
 }

@@ -1,16 +1,16 @@
 use crate::ast::analyze::ast_analyze::Parser;
 use crate::ast::ast_struct::{BinOp, BoolOp, Compare, Constant, Operator, Type, UnaryOp};
 use crate::ast::ast_struct::Operator::Not;
-use crate::ast::data_type::bool::obj_bool;
-use crate::ast::data_type::float::obj_float;
-use crate::ast::data_type::int::obj_int;
-use crate::ast::data_type::str::obj_str;
 use crate::ast::error::ErrorType;
 use crate::ast::scanner::{Literal, TokenType};
 use crate::ast::scanner::TokenType::{
     AND, BangEqual, EqualEqual, GREATER, GreaterEqual, IDENTIFIER, In, Is, LeftParen, LESS, LessEqual,
     Minus, NOT, OR, Plus, Slash, Star,
 };
+use crate::data_type::bool::obj_bool;
+use crate::data_type::float::obj_float;
+use crate::data_type::int::obj_int;
+use crate::data_type::str::obj_str;
 
 impl Parser {
     fn primary(&mut self) -> Result<Type, ErrorType> {

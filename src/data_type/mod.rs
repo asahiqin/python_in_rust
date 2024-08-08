@@ -5,5 +5,6 @@ pub mod float;
 pub mod function;
 pub mod int;
 pub mod list;
-pub mod object;
 pub mod str;
+mod built_in_method_and_function;
+pub mod py_object;

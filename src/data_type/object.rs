@@ -1,14 +1,14 @@
 use crate::ast::ast_struct::DataType;
-use crate::ast::data_type::bool::{bool_behaviour, obj_bool};
-use crate::ast::data_type::float::float_behaviour;
-use crate::ast::data_type::int::int_behaviour;
-use crate::ast::data_type::str::str_behaviour;
 use crate::ast::error::object_error::{ObjBasicError, ObjMethodCallError};
 use crate::ast::error::ErrorType;
 use std::collections::HashMap;
 use std::error::Error;
 use std::fmt::{Debug, Display, Formatter};
 use crate::ast::namespace::{Namespace, PyNamespace};
+use crate::data_type::bool::{bool_behaviour, obj_bool};
+use crate::data_type::float::float_behaviour;
+use crate::data_type::int::int_behaviour;
+use crate::data_type::str::str_behaviour;
 
 /// ## struct RustObjBehavior
 /// 此结构体用来调用对应的rust函数
@@ -191,6 +191,9 @@ impl PyObject {
             }
         }
     }
+    pub fn inherit(mut py_object: PyObject, namespace: Namespace, env: &mut PyNamespace){
+
+    }
     fn deref_py_result(x: PyResult) -> PyResult {
         match x {
             PyResult::Some(x) => PyResult::Some(x),
@@ -274,8 +277,8 @@ impl PyObject {
             },
         }
     }
-    pub fn py_call(&mut self, other: HashMap<String, PyObjAttr>,namespace: Namespace, env: &mut PyNamespace) -> PyResult{
-        self.call(String::from("__call__"), other,namespace,env)
+    pub fn py_call(&mut self, args: HashMap<String, PyObjAttr>,namespace: Namespace, env: &mut PyNamespace) -> PyResult{
+        self.call(String::from("__call__"), args, namespace,env)
     }
     pub fn add(&mut self, other: HashMap<String, PyObjAttr>,namespace: Namespace, env: &mut PyNamespace) -> PyResult {
         self.call(String::from("__add__"), other,namespace,env)

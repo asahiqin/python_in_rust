@@ -1,14 +1,12 @@
 use std::error::Error;
 
 use crate::ast::ast_struct::DataType;
-use crate::ast::data_type::bool::obj_bool;
-use crate::ast::data_type::data_type_calc::CompareResult;
-use crate::ast::data_type::float::obj_float;
-use crate::ast::data_type::int::obj_int;
-use crate::ast::data_type::object::{
-    HashMapAttr, PyObjAttr, PyObjBehaviors, PyObject, PyResult, RustObjBehavior,
-};
-use crate::ast::data_type::str::obj_str;
+use crate::data_type::bool::obj_bool;
+use crate::data_type::data_type_calc::CompareResult;
+use crate::data_type::float::obj_float;
+use crate::data_type::int::obj_int;
+use crate::data_type::object::{HashMapAttr, PyObjAttr, PyObjBehaviors, PyObject, PyResult, RustObjBehavior};
+use crate::data_type::str::obj_str;
 use crate::define_obj_method;
 
 pub fn build_rust_method(

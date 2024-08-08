@@ -1,10 +1,11 @@
 use crate::ast::ast_struct::DataType;
-use crate::ast::data_type::core_type::build_rust_method;
-use crate::ast::data_type::object::PyObjAttr;
-use crate::ast::data_type::object::PyObjBehaviors;
-use crate::ast::data_type::object::PyObject;
 use crate::build_method;
 use std::collections::HashMap;
+use crate::data_type::object::PyObject;
+use crate::data_type::core_type::build_rust_method;
+use crate::data_type::object::PyObjAttr;
+use crate::data_type::object::PyObjBehaviors;
+
 
 #[allow(dead_code)]
 pub fn obj_list(x: Vec<PyObject>) -> PyObject {
