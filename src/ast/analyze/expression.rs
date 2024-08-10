@@ -7,10 +7,7 @@ use crate::ast::scanner::TokenType::{
     AND, BangEqual, EqualEqual, GREATER, GreaterEqual, IDENTIFIER, In, Is, LeftParen, LESS, LessEqual,
     Minus, NOT, OR, Plus, Slash, Star,
 };
-use crate::data_type::bool::obj_bool;
-use crate::data_type::float::obj_float;
-use crate::data_type::int::obj_int;
-use crate::data_type::str::obj_str;
+use crate::data_type::py_object::{obj_bool, obj_float, obj_int, obj_str};
 
 impl Parser {
     fn primary(&mut self) -> Result<Type, ErrorType> {

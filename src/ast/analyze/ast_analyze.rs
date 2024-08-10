@@ -118,7 +118,6 @@ impl TokenIter {
 pub struct Parser {
     ast_list: PyRootNode,
     pub token_iter: TokenIter,
-    namespace: Namespace,
     pub indent: u64,
     pub parent_indent: Vec<u64>,
 }
@@ -130,14 +129,12 @@ pub(crate) fn build_parser(scanner: Scanner, py_env: PyNamespace) -> Parser {
     return Parser {
         ast_list: PyRootNode {
             body: vec![],
-            py_root_env: py_env,
             lineno,
             end_lineno,
             col_offset,
             end_col_offset,
         },
         token_iter: TokenIter::new(scanner.token),
-        namespace: Namespace::Global,
         indent: 0,
         parent_indent: vec![0],
     };
@@ -151,7 +148,6 @@ impl Default for Parser {
                 current: 0,
                 vec_token: vec![],
             },
-            namespace: Namespace::Builtin,
             indent: 0,
             parent_indent: vec![0],
         }
@@ -174,10 +170,6 @@ impl Parser {
     }
     pub fn tokens(&mut self, tokens: Vec<Token>) -> Self {
         self.token_iter = TokenIter::new(tokens);
-        self.clone()
-    }
-    pub fn namespace(&mut self, namespace: Namespace) -> Self {
-        self.namespace = namespace;
         self.clone()
     }
     pub fn indent(&mut self, indent: usize, parent_indent: Vec<u64>) -> Self {

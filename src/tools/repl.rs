@@ -2,6 +2,7 @@ use std::io;
 use std::io::Write;
 
 use crate::ast::ast_struct::{PyRootNode, Type};
+use crate::ast::namespace::PyNamespace;
 
 pub fn repl(version: String) {
     println!("{}", version);
@@ -16,7 +17,8 @@ pub fn repl(version: String) {
         }
         let mut nodes = PyRootNode::default();
         nodes.parser(source);
-        match nodes.exec() {
+        let mut py_namespace = PyNamespace::default();
+        match nodes.exec(&mut py_namespace) {
             Type::Constant(x) => {
                 println!("{:#?}", x)
             }

@@ -4,22 +4,21 @@ use uuid::Uuid;
 
 use crate::ast::error::{BasicError, ErrorType};
 use crate::ast::error::environment::{GetVariableError, NamespaceNotFound, SetVariableError};
-use crate::data_type::object::PyObject;
 use crate::data_type::py_object::PyObject;
 
 type PyEnvId = HashMap<String, Uuid>;
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 /// struct VariablePool
 /// 变量池
 /// 为什么不用Hashmap之类？为了实现双向键值对
 /// 为什么不用Bimap？因为PyObject没有实现Eq特征（哭）
-pub struct VariablePool {
+pub struct VariablePool<'a> {
     id: Vec<Uuid>,
-    value: Vec<PyObject>,
+    value: Vec<&'a mut PyObject>,
     count: Vec<u64>,
 }
-impl Default for VariablePool {
+impl Default for VariablePool<'_> {
     fn default() -> Self {
         VariablePool {
             id: vec![],
@@ -28,8 +27,8 @@ impl Default for VariablePool {
         }
     }
 }
-impl VariablePool {
-    pub fn insert(&mut self, key: Uuid, value: PyObject) {
+impl VariablePool<'_> {
+    pub fn insert<'b,'a:'b>(&'a mut self, key: Uuid, value:&'b mut PyObject) {
         self.id.push(key);
         self.value.push(value);
         self.count.push(1)
@@ -41,7 +40,7 @@ impl VariablePool {
     }
 
     /// 存储一个新的值，如果存在就返回存在值对应的uuid，否则返回新建的uuid
-    pub fn store_new_value(&mut self, value: PyObject) -> Uuid {
+    pub fn store_new_value(&mut self, value: &mut PyObject) -> Uuid {
         let uuid = Uuid::new_v4();
         while self.id.contains(&uuid) {
             let uuid = Uuid::new_v4();
@@ -50,7 +49,7 @@ impl VariablePool {
             }
         }
         for (index, item) in self.value.iter().enumerate() {
-            if item == &value {
+            if **item.clone() == value.clone() {
                 self.count[index] += 1;
                 return self.id[index];
             }
@@ -58,11 +57,11 @@ impl VariablePool {
         self.insert(uuid, value);
         uuid
     }
-    pub fn update_value(&mut self, uuid: Uuid, value: PyObject) {
+    pub fn update_value(&mut self, uuid: Uuid, value: &mut PyObject) {
         if self.id.contains(&uuid) {
             for (index, item) in self.id.iter().enumerate() {
                 if item == &uuid {
-                    self.value[index] = value.clone();
+                    self.value[index] = value;
                 }
             }
         } else {
@@ -79,10 +78,10 @@ impl VariablePool {
             }
         }
     }
-    pub fn get_value(&mut self, uuid: Uuid) -> Option<PyObject> {
+    pub fn get_value(&mut self, uuid: Uuid) -> Option<&mut PyObject> {
         for (index, item) in self.id.iter().enumerate() {
             if item == &uuid {
-                return Some(self.value[index].clone());
+                return Some(self.value[index]);
             }
         }
         None
@@ -94,14 +93,14 @@ impl VariablePool {
 /// global：全局
 /// enclosing：第一层函数
 /// local：第一层函数内的嵌套函数
-#[derive(Debug, Clone)]
-pub struct PyNamespace {
-    pub variable_pool: VariablePool,
+#[derive(Debug)]
+pub struct PyNamespace<'a> {
+    pub variable_pool: VariablePool<'a>,
     pub(crate) builtin_namespace: PyEnvId,
     pub(crate) global_namespace: PyEnvId,
     pub(crate) enclosing_namespace: HashMap<String, InterNamespace>,
 }
-impl Default for PyNamespace {
+impl Default for PyNamespace<'_> {
     fn default() -> Self {
         PyNamespace {
             variable_pool: Default::default(),
@@ -124,8 +123,8 @@ impl Default for InterNamespace {
         }
     }
 }
-impl PyNamespace {
-    pub fn set_any(&mut self,name:Namespace,id:String,value:PyObject) -> Uuid{
+impl PyNamespace<'_> {
+    pub fn set_any(&mut self,name:Namespace,id:String,value:&mut PyObject) -> Uuid{
         match name {
             Namespace::Builtin => {
                 self.set_builtin(id,value)
@@ -137,7 +136,7 @@ impl PyNamespace {
                 self.set_enclosing(x, id, value)
             }
             Namespace::Local(x, local_id) => {
-                self.set_local(x,local_id,id,value)
+                self.set_local(x,local_id,id,value).unwrap()
             }
         }
     }
@@ -177,23 +176,47 @@ impl PyNamespace {
             }
         }
     }
-    pub fn get_any(&mut self,namespace: Namespace,id:String) -> Result<PyObject, ErrorType>{
+    pub fn get_any(&mut self,namespace: Namespace,id:String) -> Result<&mut PyObject, ErrorType>{
         match namespace {
             Namespace::Builtin => {
                 self.get_builtin(id)
             }
             Namespace::Global => {
-                self.get_global(id)
+                match self.get_global(id.clone()){
+                    Ok(x) => {
+                        Ok(x)
+                    }
+                    Err(x) => {
+                        self.get_any(Namespace::Builtin,id.clone())
+                    }
+                }
             }
             Namespace::Enclosing(x) => {
-                self.get_enclosing(x, id)
+                match self.get_enclosing(x, id.clone()) {
+                    Ok(x) => {
+                        Ok(x)
+                    }
+                    Err(x) => {
+                        self.get_any(Namespace::Builtin,id.clone())
+                    }
+                }
             }
             Namespace::Local(x, local_id) => {
-                self.get_local(x,local_id,id)
+                match self.get_local(x,local_id,id.clone()){
+                    Ok(x) => {
+                        Ok(x)
+                    }
+                    Err(x) => {
+                        self.get_any(Namespace::Builtin,id.clone())
+                    }
+                }
             }
         }
     }
-    fn get_from_env(&mut self, py_env_id: PyEnvId, id: &String) -> Option<PyObject> {
+    pub fn get_from_uuid(&mut self, uuid: Uuid) -> Option<&mut PyObject> {
+        self.variable_pool.get_value(uuid)
+    }
+    fn get_from_env(&mut self, py_env_id: PyEnvId, id: &String) -> Option<&mut PyObject> {
         match py_env_id.get(id) {
             None => {}
             Some(x) => match self.variable_pool.get_value(*x) {
@@ -203,7 +226,7 @@ impl PyNamespace {
         }
         None
     }
-    pub fn get_builtin(&mut self, id: String) -> Result<PyObject, ErrorType> {
+    pub fn get_builtin(&mut self, id: String) -> Result<&mut PyObject, ErrorType> {
         match self.get_from_env(self.builtin_namespace.clone(), &id) {
             None => Err(GetVariableError::new(
                 BasicError::default(),
@@ -213,12 +236,12 @@ impl PyNamespace {
             Some(x) => Ok(x),
         }
     }
-    pub fn set_builtin(&mut self, id: String, value: PyObject) -> Uuid {
+    pub fn set_builtin(&mut self, id: String, value: &mut PyObject) -> Uuid {
         let uuid = self.variable_pool.store_new_value(value);
         self.builtin_namespace.insert(id.clone(), uuid);
         uuid
     }
-    pub fn update_builtin(&mut self, id: String, value: PyObject) -> Option<ErrorType> {
+    pub fn update_builtin(&mut self, id: String, value: &mut PyObject) -> Option<ErrorType> {
         match self.builtin_namespace.get(&id) {
             None => {
                 return Some(SetVariableError::new(
@@ -233,7 +256,7 @@ impl PyNamespace {
         };
         None
     }
-    pub fn get_global(&mut self, id: String) -> Result<PyObject, ErrorType> {
+    pub fn get_global(&mut self, id: String) -> Result<&mut PyObject, ErrorType> {
         match self.get_from_env(self.global_namespace.clone(), &id) {
             None => Err(GetVariableError::new(
                 BasicError::default(),
@@ -243,12 +266,12 @@ impl PyNamespace {
             Some(x) => Ok(x),
         }
     }
-    pub fn set_global(&mut self, id: String, value: PyObject) -> Uuid{
+    pub fn set_global(&mut self, id: String, value:&mut PyObject) -> Uuid{
         let uuid = self.variable_pool.store_new_value(value);
         self.global_namespace.insert(id.clone(), uuid);
         uuid
     }
-    pub fn update_global(&mut self, id: String, value: PyObject) -> Option<ErrorType> {
+    pub fn update_global(&mut self, id: String, value: &mut PyObject) -> Option<ErrorType> {
         match self.global_namespace.get(&id) {
             None => {
                 return Some(SetVariableError::new(
@@ -267,7 +290,7 @@ impl PyNamespace {
         &mut self,
         namespace_id: String,
         id: String,
-    ) -> Result<PyObject, ErrorType> {
+    ) -> Result<&mut PyObject, ErrorType> {
         match self.enclosing_namespace.get(&namespace_id) {
             None => {}
             Some(x) => match x.namespace.get(&id) {
@@ -288,11 +311,11 @@ impl PyNamespace {
         self.enclosing_namespace
             .insert(namespace_id, InterNamespace::default());
     }
-    pub fn set_enclosing(&mut self, namespace_id: String, id: String, value: PyObject) -> uuid{
+    pub fn set_enclosing(&mut self, namespace_id: String, id: String, value:&mut PyObject) -> Uuid{
         match self.enclosing_namespace.get_mut(&namespace_id) {
             None => {
                 self.create_enclosing_namespace(namespace_id.clone());
-                self.set_enclosing(namespace_id, id, value);
+                self.set_enclosing(namespace_id, id, value)
             }
             Some(x) => {
                 let uuid = self.variable_pool.store_new_value(value);
@@ -344,7 +367,7 @@ impl PyNamespace {
         namespace_id: String,
         local_id: Vec<String>,
         id: String,
-        value: PyObject,
+        value: &mut PyObject,
     ) -> Result<Uuid,ErrorType> {
         match self.enclosing_namespace.get_mut(&namespace_id) {
             None => {
@@ -372,7 +395,7 @@ impl PyNamespace {
         namespace_id: String,
         local_id: Vec<String>,
         id: String,
-    ) -> Result<PyObject, ErrorType> {
+    ) -> Result<&mut PyObject, ErrorType> {
         match self.enclosing_namespace.get_mut(&namespace_id) {
             None => {}
             Some(x) => {
