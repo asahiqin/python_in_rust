@@ -7,7 +7,7 @@ use crate::ast::scanner::TokenType::{
     Minus, NOT, OR, Plus, Slash, Star,
 };
 use crate::error::ErrorType;
-use crate::object::object::{obj_bool, obj_float, obj_int, obj_str};
+use crate::object::r#type::{obj_bool, obj_float, obj_int, obj_str};
 
 impl Parser {
     fn primary(&mut self) -> Result<Type, ErrorType> {

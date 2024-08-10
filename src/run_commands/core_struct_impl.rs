@@ -1,8 +1,7 @@
 use crate::ast::analyze::ast_analyze::build_parser;
 use crate::ast::ast_struct::{Assign, BinOp, Compare, Constant, Name, Operator, PyCtx, PyRootNode, Type};
-use crate::ast::namespace::{Namespace, PyNamespace};
 use crate::ast::scanner::build_scanner;
-use crate::object::object::{obj_bool, PyObject};
+use crate::object::namespace::{Namespace, PyNamespace};
 
 pub trait Calc {
     fn calc(&mut self, env: &mut PyNamespace, current_namespace: Namespace) -> Constant;
