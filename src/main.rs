@@ -3,7 +3,9 @@ extern crate core;
 mod ast;
 mod test;
 mod tools;
-pub mod data_type;
+pub(crate) mod error;
+mod run_commands;
+mod object;
 
 pub mod shadow {
     include!(concat!(env!("OUT_DIR"), "/shadow.rs"));

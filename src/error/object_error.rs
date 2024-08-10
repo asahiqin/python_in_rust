@@ -1,5 +1,5 @@
-use crate::ast::error::BasicError;
 use std::fmt::{Display, Formatter};
+use crate::error::BasicError;
 
 #[derive(Clone, Debug)]
 pub struct ObjBasicError {

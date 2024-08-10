@@ -1,6 +1,6 @@
 use std::fmt::{Display, Formatter};
+use crate::error::{BasicError, ErrorType};
 
-use crate::ast::error::{BasicError, ErrorType};
 
 #[derive(Clone, Debug)]
 pub struct ParserError {

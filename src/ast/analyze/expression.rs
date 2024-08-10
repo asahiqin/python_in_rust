@@ -1,13 +1,13 @@
 use crate::ast::analyze::ast_analyze::Parser;
 use crate::ast::ast_struct::{BinOp, BoolOp, Compare, Constant, Operator, Type, UnaryOp};
 use crate::ast::ast_struct::Operator::Not;
-use crate::ast::error::ErrorType;
 use crate::ast::scanner::{Literal, TokenType};
 use crate::ast::scanner::TokenType::{
     AND, BangEqual, EqualEqual, GREATER, GreaterEqual, IDENTIFIER, In, Is, LeftParen, LESS, LessEqual,
     Minus, NOT, OR, Plus, Slash, Star,
 };
-use crate::data_type::py_object::{obj_bool, obj_float, obj_int, obj_str};
+use crate::error::ErrorType;
+use crate::object::object::{obj_bool, obj_float, obj_int, obj_str};
 
 impl Parser {
     fn primary(&mut self) -> Result<Type, ErrorType> {

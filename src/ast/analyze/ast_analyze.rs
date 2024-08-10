@@ -1,9 +1,8 @@
 use crate::ast::ast_struct::{Assign, If, Name, Print, PyCtx, PyRootNode, Type, While};
-use crate::ast::error::{BasicError, ErrorType};
-use crate::ast::error::parser_error::ParserError;
-use crate::ast::namespace::{Namespace, PyNamespace};
 use crate::ast::scanner::{Literal, Scanner, Token, TokenType};
 use crate::ast::scanner::TokenType::{COLON, ELIF, ELSE, EOF, EQUAL, IDENTIFIER, IF, LineBreak, PRINT, SPACE, TAB, WHILE};
+use crate::error::{BasicError, ErrorType};
+use crate::error::parser_error::ParserError;
 
 #[derive(Debug, Clone)]
 pub struct TokenIter {
@@ -121,7 +120,7 @@ pub struct Parser {
     pub indent: u64,
     pub parent_indent: Vec<u64>,
 }
-pub(crate) fn build_parser(scanner: Scanner, py_env: PyNamespace) -> Parser {
+pub(crate) fn build_parser(scanner: Scanner) -> Parser {
     let lineno = scanner.lineno;
     let end_lineno = scanner.end_lineno;
     let col_offset = scanner.col_offset;
