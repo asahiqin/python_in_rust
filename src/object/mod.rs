@@ -1,5 +1,7 @@
-pub mod object;
-pub mod namespace;
+mod builtin;
 pub mod data_type_calc;
-mod define_builtin_function;
+pub mod define_builtin_function;
+mod int;
+pub mod namespace;
+pub mod object;
 pub mod r#type;

@@ -43,7 +43,6 @@ pub enum Type {
     None,
 }
 
-
 #[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq)]
 pub struct Assign {
@@ -64,7 +63,7 @@ pub struct Name {
     pub(crate) id: String,
     pub ctx: PyCtx,
 }
-impl Name{
+impl Name {
     pub fn ctx(&mut self, ctx: PyCtx) -> Self {
         self.ctx = ctx;
         return self.clone();
@@ -136,7 +135,6 @@ pub enum Operator {
     Or,
 }
 
-
 #[derive(Debug, Clone, PartialEq)]
 pub struct BinOp {
     pub left: Box<Type>,
@@ -144,14 +142,12 @@ pub struct BinOp {
     pub right: Box<Type>,
 }
 
-
 #[derive(Debug, Clone, PartialEq)]
 pub struct Compare {
     pub(crate) left: Box<Type>,
     pub(crate) ops: Vec<Operator>,
     pub(crate) comparators: Box<Vec<Type>>,
 }
-
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct UnaryOp {
@@ -165,8 +161,6 @@ pub struct BoolOp {
     pub values: Box<Vec<Type>>,
 }
 
-
-
 #[derive(Clone, Debug, PartialEq)]
 pub struct Print {
     pub(crate) arg: Box<Type>,
@@ -179,31 +173,29 @@ pub struct If {
     pub orelse: Vec<Box<Type>>,
 }
 
-
 #[derive(Clone, Debug, PartialEq)]
-pub struct While{
-    pub test:Box<Type>,
+pub struct While {
+    pub test: Box<Type>,
     pub body: Vec<Box<Type>>,
-    pub orelse:Vec<Box<Type>>
+    pub orelse: Vec<Box<Type>>,
 }
-
 
 enum FuncArgs {
     Keywords(Keywords),
-    ARGS(Vec<Type>)
+    ARGS(Vec<Type>),
 }
-struct Keywords{
-    pub arg:String,
-    pub value:Box<Type>
+struct Keywords {
+    pub arg: String,
+    pub value: Box<Type>,
 }
-impl Keywords{
-    pub fn to_hashmap(&self){
+impl Keywords {
+    pub fn to_hashmap(&self) {
         match ARGS {
             _ => {}
         }
     }
 }
-pub struct Call{
+pub struct Call {
     func: Box<Type>,
-    args: Box<FuncArgs>
+    args: Box<FuncArgs>,
 }

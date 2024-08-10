@@ -1,8 +1,10 @@
 use crate::ast::ast_struct::{Assign, If, Name, Print, PyCtx, PyRootNode, Type, While};
+use crate::ast::scanner::TokenType::{
+    LineBreak, COLON, ELIF, ELSE, EOF, EQUAL, IDENTIFIER, IF, PRINT, SPACE, TAB, WHILE,
+};
 use crate::ast::scanner::{Literal, Scanner, Token, TokenType};
-use crate::ast::scanner::TokenType::{COLON, ELIF, ELSE, EOF, EQUAL, IDENTIFIER, IF, LineBreak, PRINT, SPACE, TAB, WHILE};
-use crate::error::{BasicError, ErrorType};
 use crate::error::parser_error::ParserError;
+use crate::error::{BasicError, ErrorType};
 
 #[derive(Debug, Clone)]
 pub struct TokenIter {
@@ -190,29 +192,29 @@ impl Parser {
                 .col_offset(self.token_iter.peek().col_offset as u64),
         )
     }
-    pub fn test_indent(&mut self) -> (usize,usize){
+    pub fn test_indent(&mut self) -> (usize, usize) {
         let mut indent = 0;
         let mut times = 0;
         loop {
-            times+=1;
-            if self.token_iter.catch([LineBreak]){
-                continue
-            }else if self.token_iter.catch([SPACE]) {
-                indent+=1
-            }else if self.token_iter.catch([TAB]) {
-                indent+=4
-            }else {
-                times-=1;
-                break
+            times += 1;
+            if self.token_iter.catch([LineBreak]) {
+                continue;
+            } else if self.token_iter.catch([SPACE]) {
+                indent += 1
+            } else if self.token_iter.catch([TAB]) {
+                indent += 4
+            } else {
+                times -= 1;
+                break;
             }
         }
-        (indent,times)
+        (indent, times)
     }
     pub fn parser_without_panic(&mut self) -> Result<Type, ErrorType> {
         let mut indent: u64 = 0;
         let mut times = 0;
         loop {
-            times+=1;
+            times += 1;
             if self.token_iter.catch([TAB]) {
                 indent += 4;
             } else if self.token_iter.catch([SPACE]) {
@@ -223,7 +225,7 @@ impl Parser {
         }
         if indent == self.indent {
         } else if self.parent_indent.contains(&indent) {
-            self.token_iter.back(times-1).unwrap();
+            self.token_iter.back(times - 1).unwrap();
             return Ok(Type::None);
         } else {
             panic!("Error to indent")
@@ -311,7 +313,7 @@ impl Parser {
         if self.indent >= indent as u64 {
             return Err(self.return_err());
         }
-        let mut parent_indent:Vec<u64> = vec![];
+        let mut parent_indent: Vec<u64> = vec![];
         parent_indent.append(&mut self.parent_indent.clone());
         parent_indent.push(self.indent);
         let mut parser = Parser::default()
@@ -322,16 +324,15 @@ impl Parser {
         self.token_iter.current = parser.token_iter.current;
         return Ok(body);
     }
-    fn else_statement(&mut self) -> Result<Vec<Box<Type>>, ErrorType>{
+    fn else_statement(&mut self) -> Result<Vec<Box<Type>>, ErrorType> {
         let mut orelse: Vec<Box<Type>> = vec![];
         if self.token_iter.catch([ELSE]) {
-            if self.token_iter.catch_multi([[COLON,LineBreak]]) {
+            if self.token_iter.catch_multi([[COLON, LineBreak]]) {
                 orelse.append(&mut self.sub_type()?)
-            }else if self.token_iter.catch([COLON]){
+            } else if self.token_iter.catch([COLON]) {
                 orelse.push(Box::from(self.statement()?));
-                self.token_iter
-                    .consume(LineBreak, "".to_string())?;
-            }else {
+                self.token_iter.consume(LineBreak, "".to_string())?;
+            } else {
                 return Err(self.return_err());
             }
         };
@@ -342,14 +343,14 @@ impl Parser {
         while self.token_iter.catch([COLON]) {
             return if self.token_iter.catch([LineBreak]) {
                 let body = self.sub_type()?;
-                let mut indent= 0;
+                let mut indent = 0;
                 let times;
                 (indent, times) = self.test_indent();
                 let mut orelse: Vec<Box<Type>> = vec![];
                 if self.parent_indent.contains(&(indent as u64)) {
                     orelse.append(&mut self.else_statement()?);
                     self.token_iter.back(times).unwrap();
-                }else {
+                } else {
                     if indent != self.indent as usize {
                         return Err(self.return_err());
                     } else {
@@ -357,26 +358,21 @@ impl Parser {
                             orelse.push(Box::from(self.if_statement()?))
                         }
                         orelse.append(&mut self.else_statement()?);
-                        if orelse.len() == 0{
+                        if orelse.len() == 0 {
                             self.token_iter.back(times).unwrap();
                         }
                     }
                 }
-                Ok(Type::If(Box::from(If {
-                    test,
-                    body,
-                    orelse,
-                })))
+                Ok(Type::If(Box::from(If { test, body, orelse })))
             } else {
                 let body = self.statement()?;
-                self.token_iter
-                    .consume(LineBreak, "".to_string())?;
+                self.token_iter.consume(LineBreak, "".to_string())?;
                 Ok(Type::If(Box::from(If {
                     test,
                     body: vec![Box::from(body)],
                     orelse: vec![],
                 })))
-            }
+            };
         }
         Err(self.return_err())
     }
@@ -387,32 +383,27 @@ impl Parser {
                 let body = self.sub_type()?;
                 let indent;
                 let times;
-                (indent, times ) = self.test_indent();
+                (indent, times) = self.test_indent();
                 let mut orelse: Vec<Box<Type>> = vec![];
                 if self.parent_indent.contains(&(indent as u64)) {
                     orelse.append(&mut self.else_statement()?);
                     self.token_iter.back(times).unwrap();
-                }else{
+                } else {
                     if indent != self.indent as usize {
                         return Err(self.return_err());
                     }
                     orelse.append(&mut self.else_statement()?)
                 }
-                Ok(Type::While(Box::from(While {
-                    test,
-                    body,
-                    orelse,
-                })))
+                Ok(Type::While(Box::from(While { test, body, orelse })))
             } else {
                 let body = self.statement()?;
-                self.token_iter
-                    .consume(LineBreak, "".to_string())?;
+                self.token_iter.consume(LineBreak, "".to_string())?;
                 Ok(Type::While(Box::from(While {
                     test,
                     body: vec![Box::from(body)],
                     orelse: vec![],
                 })))
-            }
+            };
         }
         Err(self.return_err())
     }

@@ -1,7 +1,9 @@
-use std::fmt::{Display, Formatter};
-use crate::error::environment::{GetNonlocalVariableError, GetVariableError, NamespaceNotFound, SetVariableError};
+use crate::error::environment::{
+    GetNonlocalVariableError, GetVariableError, NamespaceNotFound, SetVariableError,
+};
 use crate::error::object_error::{ObjBasicError, ObjMethodCallError};
 use crate::error::parser_error::ParserError;
+use std::fmt::{Display, Formatter};
 
 pub mod environment;
 pub mod object_error;

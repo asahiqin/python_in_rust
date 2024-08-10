@@ -1,15 +1,16 @@
 extern crate core;
 
 mod ast;
+pub(crate) mod error;
+mod object;
+mod run_commands;
 mod test;
 mod tools;
-pub(crate) mod error;
-mod run_commands;
-mod object;
 
 pub mod shadow {
     include!(concat!(env!("OUT_DIR"), "/shadow.rs"));
 }
+use crate::object::object::test;
 use crate::tools::repl::repl;
 use clap::Parser;
 

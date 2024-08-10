@@ -1,11 +1,11 @@
 use crate::ast::analyze::ast_analyze::Parser;
-use crate::ast::ast_struct::{BinOp, BoolOp, Compare, Constant, Operator, Type, UnaryOp};
 use crate::ast::ast_struct::Operator::Not;
-use crate::ast::scanner::{Literal, TokenType};
+use crate::ast::ast_struct::{BinOp, BoolOp, Compare, Constant, Operator, Type, UnaryOp};
 use crate::ast::scanner::TokenType::{
-    AND, BangEqual, EqualEqual, GREATER, GreaterEqual, IDENTIFIER, In, Is, LeftParen, LESS, LessEqual,
-    Minus, NOT, OR, Plus, Slash, Star,
+    BangEqual, EqualEqual, GreaterEqual, In, Is, LeftParen, LessEqual, Minus, Plus, Slash, Star,
+    AND, GREATER, IDENTIFIER, LESS, NOT, OR,
 };
+use crate::ast::scanner::{Literal, TokenType};
 use crate::error::ErrorType;
 use crate::object::r#type::{obj_bool, obj_float, obj_int, obj_str};
 

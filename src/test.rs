@@ -25,7 +25,7 @@ mod tests {
     }
 
     #[test]
-    fn test_if_parser(){
+    fn test_if_parser() {
         let source = String::from("if a:\n    b=1");
         let mut scanner = build_scanner(source);
         scanner.scan();

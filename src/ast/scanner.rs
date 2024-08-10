@@ -1,6 +1,11 @@
 use std::collections::HashMap;
 
-use crate::ast::scanner::TokenType::{BangEqual, Comma, Dot, EqualEqual, ExactDivision, GreaterEqual, In, Is, LeftBrace, LeftParen, LessEqual, LineBreak, Minus, Mod, Plus, Pow, RightBrace, RightParen, Semicolon, Slash, Star, AND, BANG, CLASS, COLON, DEF, ELSE, EQUAL, FALSE, FOR, GREATER, IDENTIFIER, IF, LAMBDA, LESS, NOT, NUMBER, OR, PRINT, RETURN, SPACE, STRING, TAB, TRUE, WHILE, ELIF, Break, Continue};
+use crate::ast::scanner::TokenType::{
+    BangEqual, Break, Comma, Continue, Dot, EqualEqual, ExactDivision, GreaterEqual, In, Is,
+    LeftBrace, LeftParen, LessEqual, LineBreak, Minus, Mod, Plus, Pow, RightBrace, RightParen,
+    Semicolon, Slash, Star, AND, BANG, CLASS, COLON, DEF, ELIF, ELSE, EQUAL, FALSE, FOR, GREATER,
+    IDENTIFIER, IF, LAMBDA, LESS, NOT, NUMBER, OR, PRINT, RETURN, SPACE, STRING, TAB, TRUE, WHILE,
+};
 use crate::{count_char_occurrences, strip_quotes};
 #[allow(dead_code)]
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]

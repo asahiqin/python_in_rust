@@ -6,7 +6,7 @@ pub enum CompareResult {
     Great,
     Equal,
     Less,
-    NotEq
+    NotEq,
 }
 
 /**
@@ -324,24 +324,16 @@ impl DataType {
             DataType::None => false,
         }
     }
-    pub fn str(&self) -> String{
+    pub fn str(&self) -> String {
         match self {
-            DataType::Int(x) => {
-                x.to_string()
-            }
-            DataType::Float(x) => {
-                x.to_string()
-            }
-            DataType::Bool(x) => {
-                x.to_string()
-            }
-            DataType::Str(x) => {
-                x.clone()
-            }
+            DataType::Int(x) => x.to_string(),
+            DataType::Float(x) => x.to_string(),
+            DataType::Bool(x) => x.to_string(),
+            DataType::Str(x) => x.clone(),
             DataType::List(x) => {
                 todo!()
             }
-            _ => panic!("Error to convert to str")
+            _ => panic!("Error to convert to str"),
         }
     }
 }
