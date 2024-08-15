@@ -1,9 +1,9 @@
 use crate::error::environment::{
     GetNonlocalVariableError, GetVariableError, NamespaceNotFound, SetVariableError,
 };
-use crate::error::object_error::{ObjBasicError, ObjMethodCallError};
+use crate::error::object_error::{ObjBasicError, ObjDataTypeNotAttr, ObjMethodCallError, ObjMethodNotAttr};
 use crate::error::parser_error::ParserError;
-use std::fmt::{Display, Formatter};
+use std::fmt::{Display, Formatter, write};
 
 pub mod environment;
 pub mod object_error;
@@ -57,6 +57,8 @@ pub enum ErrorType {
     SetVariableError(SetVariableError),
     GetNonlocalVariableError(GetNonlocalVariableError),
     NamespaceNotFound(NamespaceNotFound),
+    ObjMethodNotAttr(ObjMethodNotAttr),
+    ObjDatatypeNotAttr(ObjDataTypeNotAttr)
 }
 
 impl Display for ErrorType {
@@ -85,6 +87,9 @@ impl Display for ErrorType {
             }
             ErrorType::NamespaceNotFound(x) => {
                 write!(f, "{}", x)
+            }
+            x => {
+                write!(f,"{:#?}",x.clone())
             }
         }
     }

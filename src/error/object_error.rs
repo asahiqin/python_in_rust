@@ -61,3 +61,20 @@ impl ObjMethodCallError {
         self.clone()
     }
 }
+
+
+#[derive(Clone, Debug)]
+pub struct ObjMethodNotAttr{}
+impl Default for ObjMethodNotAttr{
+    fn default() -> Self {
+        Self
+    }
+}
+#[derive(Clone, Debug)]
+pub struct ObjDataTypeNotAttr{}
+
+impl Default for ObjDataTypeNotAttr{
+    fn default() -> Self {
+        Self
+    }
+}

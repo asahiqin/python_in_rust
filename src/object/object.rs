@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use uuid::Uuid;
 
 use crate::ast::ast_struct::{DataType, Type};
-use crate::error::object_error::ObjBasicError;
+use crate::error::object_error::{ObjBasicError, ObjDataTypeNotAttr, ObjMethodCallError, ObjMethodNotAttr};
 use crate::error::ErrorType;
 use crate::object::define_builtin_function::BuiltInFunction;
 use crate::object::namespace::{Namespace, PyNamespace};
@@ -161,14 +161,40 @@ impl PyObject {
                 PyObjAttr::Interpreter(x) => {
                     return Ok(env.variable_pool.get_value(x.clone()).unwrap())
                 }
-                PyObjAttr::Rust(x) => return Ok(data_type_to_obj(x.clone())),
+                PyObjAttr::Rust(x) => return Err(ErrorType::ObjDatatypeNotAttr(ObjDataTypeNotAttr::default())),
                 PyObjAttr::None => Err(ErrorType::ObjBasicError(
                     ObjBasicError::default().identity(self.identity.clone()),
                 )),
-                _ => {
-                    todo!()
+                PyObjAttr::Function(x) => {
+                    return Err(ErrorType::ObjMethodNotAttr(ObjMethodNotAttr::default()))
                 }
             },
+        }
+    }
+    pub fn get_attr_fun(&mut self, id:String) -> Option<PyFunction>{
+        match self.attr.get(&id) {
+            None => {
+                None
+            }
+            Some(x) => {
+                match x {
+                    PyObjAttr::Function(x) => Some(x.clone()),
+                    _ => None
+                }
+            }
+        }
+    }
+    pub fn get_attr_data(&mut self,id:String) -> Option<DataType>{
+        match self.attr.get(&id) {
+            None => {
+                None
+            }
+            Some(x) => {
+                match x {
+                    PyObjAttr::Rust(x) => Some(x.clone()),
+                    _ => None
+                }
+            }
         }
     }
     pub fn meta_class(&mut self){
@@ -180,8 +206,23 @@ impl PyObject {
     pub fn call(&mut self,method:String, args:Vec<PyObjAttr>) {
 
     }
-    pub fn py_call(&mut self, args: Vec<PyObjAttr>) -> PyResult{
-
+    pub fn py_call(&mut self, args: Vec<PyObjAttr>,env: &mut PyNamespace,namespace: Namespace) -> PyResult{
+        match self.get_attr("__call__".to_string(),env,namespace.clone()) {
+            Ok(mut x) => {
+                x.py_call(args,env,namespace)
+            }
+            Err(e) => {
+                match e {
+                    ErrorType::ObjMethodNotAttr(x) =>{
+                        let mut fun = self.get_attr_fun("__call__".to_string()).unwrap();
+                        fun.run("__call__".to_string(),args,namespace,env).unwrap()
+                    }
+                    _ => {
+                        return PyResult::Err(e)
+                    }
+                }
+            }
+        }
     }
     pub fn py_new() {}
     pub fn py_init() {}

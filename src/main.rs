@@ -10,7 +10,6 @@ mod tools;
 pub mod shadow {
     include!(concat!(env!("OUT_DIR"), "/shadow.rs"));
 }
-use crate::object::object::test;
 use crate::tools::repl::repl;
 use clap::Parser;
 
