@@ -5,9 +5,6 @@ pub struct BuiltInFunction {
 
 #[macro_export]
 macro_rules! define_builtin_function {
-    /// func: Callable object name
-    /// method: The Call Method's Name
-    /// obj_id: The Object's ID
     (func:$name:ident;method:$pattern:expr;obj_id:$obj:expr) => {
         |id:String,method:String,env:&mut PyNamespace,namespace:Namespace,data_type:Vec<DataType>| -> Option<PyResult>{
             if $pattern == method && $obj == id  {

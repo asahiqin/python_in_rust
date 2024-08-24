@@ -3,7 +3,9 @@ use std::collections::HashMap;
 use uuid::Uuid;
 
 use crate::ast::ast_struct::{DataType, Type};
-use crate::error::object_error::{ObjBasicError, ObjDataTypeNotAttr, ObjMethodCallError, ObjMethodNotAttr};
+use crate::error::object_error::{
+    ObjBasicError, ObjDataTypeNotAttr, ObjMethodCallError, ObjMethodNotAttr,
+};
 use crate::error::ErrorType;
 use crate::object::define_builtin_function::BuiltInFunction;
 use crate::object::namespace::{Namespace, PyNamespace};
@@ -53,8 +55,8 @@ impl PyFunction {
             };
         }
         let mut result: PyResult = BuiltInFunction {
-            obj: id.clone(),
-            method: self.run_default.clone(),
+            obj: self.run_default.clone(),
+            method: id.clone() ,
         }
         .exec(env, namespace.clone(), data_type_vec);
         match exec_commands(self.clone().codes, env, namespace) {
@@ -66,7 +68,8 @@ impl PyFunction {
 }
 
 fn exec_commands(p0: Vec<Box<Type>>, p1: &mut PyNamespace, p2: Namespace) -> Type {
-    todo!()
+    println!("Skip this,not impl");
+    Type::None
 }
 
 #[allow(dead_code)]
@@ -97,7 +100,8 @@ pub type HashMapAttr = HashMap<String, PyObjAttr>;
 pub struct PyObject {
     attr: HashMapAttr,
     identity: String,
-    meta_class:String
+    meta_class: String,
+    pub inherit: String,
 }
 
 fn data_type_to_obj(x: DataType) -> PyObject {
@@ -110,6 +114,7 @@ impl Default for PyObject {
             attr: Default::default(),
             identity: "".to_string(),
             meta_class: "".to_string(),
+            inherit:"".to_string(),
         }
     }
 }
@@ -139,12 +144,12 @@ impl PyObject {
         let uuid = env.set_any(namespace, id.clone(), value);
         self.attr.insert(id, PyObjAttr::Interpreter(uuid));
     }
-    pub fn set_attr_data_type(&mut self,id:String, data_type: DataType){
-        self.attr.insert(id,PyObjAttr::Rust(data_type));
+    pub fn set_attr_data_type(&mut self, id: String, data_type: DataType) {
+        self.attr.insert(id, PyObjAttr::Rust(data_type));
     }
 
-    pub fn set_attr_func(&mut self,id:String, py_function: PyFunction){
-        self.attr.insert(id,PyObjAttr::Function(py_function));
+    pub fn set_attr_func(&mut self, id: String, py_function: PyFunction) {
+        self.attr.insert(id, PyObjAttr::Function(py_function));
     }
 
     pub fn get_attr(
@@ -161,7 +166,9 @@ impl PyObject {
                 PyObjAttr::Interpreter(x) => {
                     return Ok(env.variable_pool.get_value(x.clone()).unwrap())
                 }
-                PyObjAttr::Rust(x) => return Err(ErrorType::ObjDatatypeNotAttr(ObjDataTypeNotAttr::default())),
+                PyObjAttr::Rust(x) => {
+                    return Err(ErrorType::ObjDatatypeNotAttr(ObjDataTypeNotAttr::default()))
+                }
                 PyObjAttr::None => Err(ErrorType::ObjBasicError(
                     ObjBasicError::default().identity(self.identity.clone()),
                 )),
@@ -171,64 +178,106 @@ impl PyObject {
             },
         }
     }
-    pub fn get_attr_fun(&mut self, id:String) -> Option<PyFunction>{
+    pub fn get_attr_fun(&mut self, id: String) -> Option<PyFunction> {
         match self.attr.get(&id) {
-            None => {
-                None
-            }
-            Some(x) => {
-                match x {
-                    PyObjAttr::Function(x) => Some(x.clone()),
-                    _ => None
-                }
-            }
+            None => None,
+            Some(x) => match x {
+                PyObjAttr::Function(x) => Some(x.clone()),
+                _ => None,
+            },
         }
     }
-    pub fn get_attr_data(&mut self,id:String) -> Option<DataType>{
+    pub fn get_attr_data(&mut self, id: String) -> Option<DataType> {
         match self.attr.get(&id) {
-            None => {
-                None
-            }
-            Some(x) => {
-                match x {
-                    PyObjAttr::Rust(x) => Some(x.clone()),
-                    _ => None
-                }
-            }
+            None => None,
+            Some(x) => match x {
+                PyObjAttr::Rust(x) => Some(x.clone()),
+                _ => None,
+            },
         }
     }
-    pub fn meta_class(&mut self){
-
-    }
-    pub fn inherit(&mut self) {
-
-    }
-    pub fn call(&mut self,method:String, args:Vec<PyObjAttr>) {
-
-    }
-    pub fn py_call(&mut self, args: Vec<PyObjAttr>,env: &mut PyNamespace,namespace: Namespace) -> PyResult{
-        match self.get_attr("__call__".to_string(),env,namespace.clone()) {
-            Ok(mut x) => {
-                x.py_call(args,env,namespace)
-            }
-            Err(e) => {
-                match e {
-                    ErrorType::ObjMethodNotAttr(x) =>{
-                        let mut fun = self.get_attr_fun("__call__".to_string()).unwrap();
-                        fun.run("__call__".to_string(),args,namespace,env).unwrap()
-                    }
-                    _ => {
-                        return PyResult::Err(e)
-                    }
-                }
-            }
-        }
-    }
-    pub fn py_new() {}
-    pub fn py_init() {}
 }
+impl PyObject{
+    pub fn inherit(&mut self) {}
+    pub fn call(
+        &mut self,
+        method: String,
+        args: Vec<PyObjAttr>,
+        env: &mut PyNamespace,
+        namespace: Namespace,
+    ) -> PyResult {
+        match self.get_attr(method.clone(), env, namespace.clone()) {
+            Ok(mut x) => x.py_call(args, env, namespace),
+            Err(e) => match e {
+                ErrorType::ObjMethodNotAttr(x) => {
+                    let mut fun = self.get_attr_fun(method.clone()).unwrap();
+                    fun.run(method, args, namespace, env).unwrap()
+                }
+                _ => return PyResult::Err(e),
+            },
+        }
+    }
+    pub fn py_call(
+        &mut self,
+        args: Vec<PyObjAttr>,
+        env: &mut PyNamespace,
+        namespace: Namespace,
+    ) -> PyResult {
+        self.call("__call__".to_string(), args, env, namespace)
+    }
+    pub fn py_new(
+        &mut self,
+        args: Vec<PyObjAttr>,
+        env: &mut PyNamespace,
+        namespace: Namespace,
+    ) -> PyResult {
+        self.call("__new__".to_string(), args, env, namespace)
+    }
+    pub fn py_init(
+        &mut self,
+        args: Vec<PyObjAttr>,
+        env: &mut PyNamespace,
+        namespace: Namespace,
+    ) -> PyResult {
+        self.call("__init__".to_string(), args, env, namespace)
+    }
+}
+pub fn obj_init(){
 
-pub fn object() {}
+}
+pub fn object() -> PyObject {
+    let mut obj = PyObject::default().identity("object".to_string());
+    obj.set_attr_func("__init__".to_string(), PyFunction {
+        codes: vec![],
+        args: vec![],
+        run_default: "__init__".to_string(),
+    });
+
+    obj
+}
 pub fn py_function_object(args: HashMapAttr) -> PyObject {
     todo!()
+}
+
+#[test]
+fn test_object() {
+    use crate::define_builtin_function;
+    let mut env = PyNamespace::default();
+    let namespace = Namespace::Global;
+    let uuid = env.set_any(namespace.clone(),"a".to_string(), PyObject::default().identity("test_args".to_string()));
+    fn test(env: &mut PyNamespace, namespace: Namespace, data_type: Vec<DataType>) -> PyResult {
+        println!("Hello");
+        println!("{:?}", env.get_any(namespace,"p0".to_string()));
+        PyResult::None
+    };
+    define_builtin_function!(pattern:{
+        define_builtin_function!(func:test;method:"__call__";obj_id:"test")
+    });
+    let mut test_obj = PyObject::default().identity("test".to_string());
+    test_obj.set_attr_func("__call__".to_string(), PyFunction{
+        codes: vec![],
+        args: vec!["p0".to_string()],
+        run_default: "test".to_string(),
+    });
+    test_obj.py_call(vec![PyObjAttr::Interpreter(uuid)],&mut env, namespace);
 }
