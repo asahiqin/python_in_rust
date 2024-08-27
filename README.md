@@ -46,7 +46,7 @@ print b
 ```bash
 git clone https://github.com/asahiqin/python_in_rust.git
 cd python_in_rust
-cargo test py_test --nocapture
+cargo test test_py --nocapture
 ```
 
 ## About
