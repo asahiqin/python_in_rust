@@ -2,9 +2,8 @@ use std::collections::HashMap;
 
 use uuid::Uuid;
 
-use crate::error::environment::{GetVariableError, NamespaceNotFound, SetVariableError};
 use crate::error::{BasicError, ErrorType};
-use crate::object::define_builtin_function::ObjBuiltInFunction;
+use crate::error::environment::{GetVariableError, NamespaceNotFound, SetVariableError};
 use crate::object::object::PyObject;
 
 type PyEnvId = HashMap<String, Uuid>;
@@ -12,8 +11,7 @@ type PyEnvId = HashMap<String, Uuid>;
 #[derive(Debug, Clone)]
 /// struct VariablePool
 /// 变量池
-/// 为什么不用Hashmap之类？为了实现双向键值对
-/// 为什么不用Bimap？因为PyObject没有实现Eq特征（哭）
+/// 此为临时解决方案
 pub struct VariablePool {
     id: Vec<Uuid>,
     value: Vec<PyObject>,
@@ -153,13 +151,16 @@ impl PyNamespace {
             },
             Namespace::Local(x, local_id) => match self.enclosing_namespace.get_mut(&x.clone()) {
                 None => {}
-                Some(x) => {
-                    match Self::deref_local_namespace(x, local_id, 0) {
+                Some(inter) => {
+                    match Self::deref_local_namespace(inter, local_id.clone(), 0) {
                         Ok(x) => {
                             let inter = x;
                             inter.namespace.insert(id, uuid);
                         }
-                        _ => {}
+                        _ => {
+                            self.create_local_namespace(x, local_id);
+                            self.set_any_from_uuid(name, id, uuid)
+                        }
                     };
                 }
             },
@@ -173,8 +174,8 @@ impl PyNamespace {
             Namespace::Local(x, local_id) => self.get_local(x, local_id, id),
         }
     }
-    pub fn get_any_uuid(&mut self, namespace: Namespace, id: String) -> Result<Uuid, ErrorType> {
-        match namespace {
+    pub fn get_any_uuid(&self, namespace: Namespace, id: String) -> Result<Uuid, ErrorType> {
+        match namespace.clone() {
             Namespace::Builtin => match self.builtin_namespace.get(&id) {
                 None => {}
                 Some(x) => return Ok(x.clone()),
@@ -183,17 +184,17 @@ impl PyNamespace {
                 None => {}
                 Some(x) => return Ok(x.clone()),
             },
-            Namespace::Enclosing(x) => match self.enclosing_namespace.get_mut(&x) {
+            Namespace::Enclosing(x) => match self.enclosing_namespace.get(&x) {
                 None => {}
                 Some(x) => match x.namespace.get(&id) {
                     None => {}
                     Some(x) => return Ok(x.clone()),
                 },
             },
-            Namespace::Local(n_id, l_id) => match self.enclosing_namespace.get_mut(&n_id) {
+            Namespace::Local(n_id, l_id) => match self.enclosing_namespace.get(&n_id) {
                 None => {}
                 Some(x) => {
-                    match Self::deref_local_namespace(x, l_id, 0) {
+                    match Self::deref_local_namespace_non_mut(x, l_id, 0) {
                         Ok(x) => {
                             let inter = x;
                             match inter.namespace.get(&id) {
@@ -209,7 +210,7 @@ impl PyNamespace {
         Err(GetVariableError::new(
             BasicError::default(),
             id,
-            "Namespace".to_string(),
+            namespace.to_string(),
         ))
     }
     fn get_from_env(&self, py_env_id: PyEnvId, id: &String) -> Option<PyObject> {
@@ -428,8 +429,8 @@ impl PyNamespace {
     }
     pub fn get_nonlocal(
         &mut self,
-        namespace_id: String,
-        local_id: Vec<String>,
+        _namespace_id: String,
+        _local_id: Vec<String>,
     ) -> Result<(PyObject, Vec<String>), ErrorType> {
         todo!()
     }
@@ -447,6 +448,24 @@ pub enum Namespace {
     Global,
     Enclosing(String),
     Local(String, Vec<String>),
+}
+impl Namespace{
+    pub fn to_string(&self) -> String{
+        match self {
+            Namespace::Builtin => {
+                "Builtin".to_string()
+            }
+            Namespace::Global => {
+                "Global".to_string()
+            }
+            Namespace::Enclosing(x) => {
+                format!("Enclosing({})",x)
+            }
+            Namespace::Local(x, y) => {
+                format!("Local({},{:?})",x,y.clone())
+            }
+        }
+    }
 }
 
 #[test]

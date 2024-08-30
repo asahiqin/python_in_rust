@@ -330,7 +330,7 @@ impl DataType {
             DataType::Float(x) => x.to_string(),
             DataType::Bool(x) => x.to_string(),
             DataType::Str(x) => x.clone(),
-            DataType::List(x) => {
+            DataType::List(_) => {
                 todo!()
             }
             _ => panic!("Error to convert to str"),

@@ -82,6 +82,9 @@ pub struct Attribute {
     attr: String,
     py_ctx: PyCtx,
 }
+
+/// 数据枚举，用来实现多类型存储
+/// 该枚举旨在在rust内部实现部分内置类型
 #[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq)]
 pub enum DataType {
@@ -187,13 +190,6 @@ enum FuncArgs {
 struct Keywords {
     pub arg: String,
     pub value: Box<Type>,
-}
-impl Keywords {
-    pub fn to_hashmap(&self) {
-        match ARGS {
-            _ => {}
-        }
-    }
 }
 pub struct Call {
     func: Box<Type>,
