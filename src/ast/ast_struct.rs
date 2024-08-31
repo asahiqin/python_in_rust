@@ -1,4 +1,5 @@
 use std::fmt::Debug;
+use std::hash::{Hash, Hasher};
 
 use crate::ast::ast_struct::FuncArgs::ARGS;
 use crate::object::object::PyObject;
@@ -94,6 +95,12 @@ pub enum DataType {
     Str(String),
     List(Box<Vec<PyObject>>),
     None,
+}
+impl Eq for DataType{}
+impl Hash for DataType{
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.str().hash(state)
+    }
 }
 #[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq)]

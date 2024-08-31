@@ -11,6 +11,7 @@ clap = { version = "4.4.13", features = ["derive"] }
 log = "0.4"
 colored="1.7.1"
 proc_marco = { path = "proc_marco" }
+bimap = "0.6.3"
 
 [build-dependencies]
 shadow-rs = "0.3"

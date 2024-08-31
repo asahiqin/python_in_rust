@@ -1,89 +1,68 @@
 use std::collections::HashMap;
+use std::hash::Hash;
+use std::ops::Add;
+use bimap::{BiHashMap, Overwritten};
 
 use uuid::Uuid;
 
-use crate::error::{BasicError, ErrorType};
 use crate::error::environment::{GetVariableError, NamespaceNotFound, SetVariableError};
+use crate::error::{BasicError, ErrorType};
 use crate::object::object::PyObject;
 
 type PyEnvId = HashMap<String, Uuid>;
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 /// struct VariablePool
 /// 变量池
 /// 此为临时解决方案
 pub struct VariablePool {
-    id: Vec<Uuid>,
-    value: Vec<PyObject>,
-    count: Vec<u64>,
+    pub bi_hash_map: BiHashMap<Uuid, PyObject>,
+    count_map: HashMap<Uuid, u64>,
 }
 impl Default for VariablePool {
     fn default() -> Self {
         VariablePool {
-            id: vec![],
-            value: vec![],
-            count: vec![],
+            bi_hash_map: BiHashMap::new(),
+            count_map: HashMap::new(),
         }
     }
 }
 impl VariablePool {
-    pub fn insert(&mut self, key: Uuid, value: PyObject) {
-        self.id.push(key);
-        self.value.push(value);
-        self.count.push(1)
-    }
-    pub fn delete(&mut self, index: usize) {
-        self.id.remove(index);
-        self.value.remove(index);
-        self.count.remove(index);
-    }
 
     /// 存储一个新的值，如果存在就返回存在值对应的uuid，否则返回新建的uuid
     pub fn store_new_value(&mut self, value: PyObject) -> Uuid {
         let uuid = Uuid::new_v4();
-        while self.id.contains(&uuid) {
-            let uuid = Uuid::new_v4();
-            if !self.id.contains(&uuid) {
-                break;
+        match self.bi_hash_map.get_by_right(&value).clone() {
+            None => {
+                self.bi_hash_map.insert(uuid,value);
+                uuid
+            }
+            Some(x) => {
+                x.clone()
             }
         }
-        for (index, item) in self.value.iter().enumerate() {
-            if item.clone() == value {
-                self.count[index] += 1;
-                return self.id[index];
-            }
-        }
-        self.insert(uuid, value);
-        uuid
     }
     pub fn update_value(&mut self, uuid: Uuid, value: PyObject) {
-        if self.id.contains(&uuid) {
-            for (index, item) in self.id.iter().enumerate() {
-                if item == &uuid {
-                    self.value[index] = value.clone();
-                }
-            }
-        } else {
-            self.insert(uuid, value)
-        }
+        self.bi_hash_map.insert(uuid, value);
     }
     pub fn del_variable(&mut self, uuid: Uuid) {
-        for (index, item) in self.id.clone().into_iter().enumerate() {
-            if item == uuid {
-                self.count[index] -= 1;
-                if self.count[index] == 0 {
-                    self.delete(index)
-                }
-            }
+        if let Some(count) =self.count_map.get_mut(&uuid) {
+            *count -= 1;
+        };
+        if self.count_map.get(&uuid).unwrap().clone() == 0{
+            self.count_map.remove(&uuid);
+            self.bi_hash_map.remove_by_left(&uuid);
         }
     }
     pub fn get_value(&self, uuid: Uuid) -> Option<PyObject> {
-        for (index, item) in self.id.iter().enumerate() {
-            if item == &uuid {
-                return Some(self.value[index].clone());
+        match self.bi_hash_map.get_by_left(&uuid){
+            None => {
+                None
+            }
+            Some(x) => {
+                Some(x.clone())
             }
         }
-        None
     }
 }
 
@@ -449,20 +428,16 @@ pub enum Namespace {
     Enclosing(String),
     Local(String, Vec<String>),
 }
-impl Namespace{
-    pub fn to_string(&self) -> String{
+impl Namespace {
+    pub fn to_string(&self) -> String {
         match self {
-            Namespace::Builtin => {
-                "Builtin".to_string()
-            }
-            Namespace::Global => {
-                "Global".to_string()
-            }
+            Namespace::Builtin => "Builtin".to_string(),
+            Namespace::Global => "Global".to_string(),
             Namespace::Enclosing(x) => {
-                format!("Enclosing({})",x)
+                format!("Enclosing({})", x)
             }
             Namespace::Local(x, y) => {
-                format!("Local({},{:?})",x,y.clone())
+                format!("Local({},{:?})", x, y.clone())
             }
         }
     }
@@ -471,8 +446,13 @@ impl Namespace{
 #[test]
 fn test_namespace() {
     let mut env = PyNamespace::default();
+    let uuid = Uuid::new_v4();
+    env.variable_pool.bi_hash_map.insert(uuid, PyObject::default());
+    let uuid2 =env.variable_pool.bi_hash_map.get_by_right(&PyObject::default());
+    assert_eq!(uuid, uuid2.unwrap().clone());
     // store a same value
     let uuid1 = env.set_global("global_test".to_string(), PyObject::default());
     let uuid2 = env.set_global("global_test2".to_string(), PyObject::default());
+    assert_eq!(PyObject::default(), PyObject::default());
     assert_eq!(uuid1, uuid2)
 }

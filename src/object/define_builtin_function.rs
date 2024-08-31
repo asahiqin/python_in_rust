@@ -54,7 +54,7 @@ impl ObjBuiltInFunction {
         &self,
         obj_id: String,
         method_id: String,
-        builtin_function_args: &mut BuiltinFunctionArgs
+        builtin_function_args: &mut BuiltinFunctionArgs,
     ) -> PyResult {
         match self.call.get(&obj_id) {
             None => PyResult::None,
@@ -75,14 +75,11 @@ pub struct ExecFunction {
 impl ExecFunction {
     /// 执行函数
     /// - builtin_function_args: 传入的参数 [`BuiltinFunctionArgs`]
-    pub fn exec(
-        &mut self,
-        builtin_function_args: &mut BuiltinFunctionArgs
-    ) -> PyResult {
+    pub fn exec(&mut self, builtin_function_args: &mut BuiltinFunctionArgs) -> PyResult {
         builtin_function_args.builtin.exec_call(
             self.obj.clone(),
             self.method.clone(),
-            builtin_function_args
+            builtin_function_args,
         )
     }
 }
@@ -120,8 +117,8 @@ impl BuiltinFunctionArgs<'_> {
     /// 设置一个变量
     /// - id: 标识符
     /// - obj： 对象 [`PyObject`]
-    pub fn set_variable(&mut self, id: String, obj: PyObject) {
-        self.env.set_any(self.namespace.clone(), id, obj);
+    pub fn set_variable(&mut self, id: String, obj: PyObject) -> Uuid {
+        self.env.set_any(self.namespace.clone(), id, obj)
     }
     /// 直接用Uuid设置一个变量
     /// - id: 标识符
@@ -143,6 +140,6 @@ fn test_define_fn() {
             namespace,
             builtin: &Default::default(),
             data_type: vec![],
-        }
+        },
     );
 }
