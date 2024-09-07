@@ -290,50 +290,13 @@ impl DataType {
             _ => Ok(CompareResult::NotEq),
         }
     }
-    pub fn bool(&self) -> bool {
-        match self {
-            DataType::Int(x) => {
-                if *x != 0 {
-                    true
-                } else {
-                    false
-                }
-            }
-            DataType::Float(x) => {
-                if *x != 0.0 {
-                    true
-                } else {
-                    false
-                }
-            }
-            DataType::Bool(x) => *x,
-            DataType::Str(x) => {
-                if x.as_str() != "" {
-                    true
-                } else {
-                    false
-                }
-            }
-            DataType::List(x) => {
-                if x.len() != 0 {
-                    true
-                } else {
-                    false
-                }
-            }
-            DataType::None => false,
-        }
-    }
     pub fn str(&self) -> String {
         match self {
             DataType::Int(x) => x.to_string(),
             DataType::Float(x) => x.to_string(),
             DataType::Bool(x) => x.to_string(),
             DataType::Str(x) => x.clone(),
-            DataType::List(_) => {
-                todo!()
-            }
-            _ => panic!("Error to convert to str"),
+            x => format!("{:?}", x.clone()),
         }
     }
 }

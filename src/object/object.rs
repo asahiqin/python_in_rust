@@ -11,7 +11,7 @@ use crate::error::ErrorType;
 use crate::object::define_builtin_function::{
     BuiltinFunctionArgs, ExecFunction, ObjBuiltInFunction,
 };
-use crate::object::namespace::{Namespace, PyNamespace};
+use crate::object::namespace::{Namespace, PyNamespace, PyVariable};
 
 #[derive(Clone, Debug)]
 pub struct PyFunction {
@@ -20,24 +20,27 @@ pub struct PyFunction {
     kwargs: bool,
     args: bool,
     run_default: String,
+    default: HashMap<String, PyObject>,
 }
 
-#[derive(Clone,Debug,Eq, PartialEq,Hash)]
-pub struct HashPyFunction{
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+pub struct HashPyFunction {
     codes: String,
     arg: Vec<String>,
     kwargs: bool,
     args: bool,
     run_default: String,
+    default: String
 }
-impl PyFunction{
-    pub fn to_hash(&self) -> HashPyFunction{
-        HashPyFunction{
+impl PyFunction {
+    pub fn to_hash(&self) -> HashPyFunction {
+        HashPyFunction {
             codes: format!("{:?}", self.codes),
             arg: self.arg.clone(),
             kwargs: self.kwargs,
             args: self.args,
             run_default: self.run_default.clone(),
+            default: format!("{:?}", self.default),
         }
     }
 }
@@ -46,12 +49,12 @@ impl PartialEq for PyFunction {
         self.to_hash() == other.to_hash()
     }
 }
-impl Hash for PyFunction{
+impl Hash for PyFunction {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.to_hash().hash(state)
     }
 }
-impl Eq for PyFunction{}
+impl Eq for PyFunction {}
 impl Default for PyFunction {
     fn default() -> Self {
         Self {
@@ -60,6 +63,7 @@ impl Default for PyFunction {
             kwargs: false,
             args: false,
             run_default: "".to_string(),
+            default: Default::default(),
         }
     }
 }
@@ -72,6 +76,12 @@ impl PyFunction {
         self.arg = arg;
         return self.clone();
     }
+
+    pub fn default_args(&mut self, default: HashMap<String, PyObject>) -> Self {
+        self.default = default;
+        return self.clone();
+    }
+
 }
 type Builtin = ObjBuiltInFunction;
 impl PyFunction {
@@ -109,7 +119,14 @@ impl PyFunction {
         for (index, item) in self.arg.iter().enumerate() {
             match vec.get(index) {
                 None => {
-                    panic!("Function args error")
+                    match self.default.get(item) {
+                        None => {
+                            panic!("Error to check arg")
+                        }
+                        Some(x) => {
+                            new_args.set_variable(item.clone(), x.clone());
+                        }
+                    }
                 }
                 Some(x) => match x.clone() {
                     PyObjAttr::Interpreter(x) => {
@@ -162,14 +179,12 @@ pub enum PyResult {
 /// 此枚举主要用来确定值的类型
 /// - 作用域Uuid
 /// - [`DataType`]枚举
-/// - 函数 [`PyFunction`]
 /// - None
 #[allow(dead_code)]
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum PyObjAttr {
     Interpreter(Uuid),
     Rust(DataType),
-    Function(PyFunction),
     None,
 }
 
@@ -188,16 +203,33 @@ pub struct PyObject {
     pub inherit: String,
     pub uuid: Uuid,
 }
-impl PartialEq for PyObject{
-    fn eq(&self, other: &Self) -> bool {
-        self.attr == other.attr && self.identity == other.identity && self.meta_class == other.meta_class && self.inherit == other.inherit
+
+impl PyObject {
+    pub fn to_variable(&self) -> PyVariable{
+        PyVariable::Object(self.clone())
     }
 }
-impl Eq for PyObject{}
-impl Hash for PyObject{
+impl PartialEq for PyObject {
+    fn eq(&self, other: &Self) -> bool {
+        self.attr == other.attr
+            && self.identity == other.identity
+            && self.meta_class == other.meta_class
+            && self.inherit == other.inherit
+    }
+}
+impl Eq for PyObject {}
+impl Hash for PyObject {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.attr.keys().cloned().collect::<Vec<String>>().hash(state);
-        self.attr.values().cloned().collect::<Vec<PyObjAttr>>().hash(state);
+        self.attr
+            .keys()
+            .cloned()
+            .collect::<Vec<String>>()
+            .hash(state);
+        self.attr
+            .values()
+            .cloned()
+            .collect::<Vec<PyObjAttr>>()
+            .hash(state);
         self.identity.hash(state);
         self.meta_class.hash(state);
         self.inherit.hash(state);
@@ -216,14 +248,15 @@ impl Default for PyObject {
 }
 impl PyObject {
     //Builder
-    pub fn new(cls: Self, env: &mut PyNamespace) -> Self {
-        let mut temp_obj = PyObject::default();
-        let uuid = env.variable_pool.store_new_value(temp_obj.clone());
+    pub fn new(cls: PyObject, env: &mut PyNamespace) -> Self {
+        let mut temp_obj = cls;
+        let uuid = env.variable_pool.store_new_value(temp_obj.clone().to_variable());
         temp_obj.uuid(uuid);
-        env.variable_pool.update_value(uuid, temp_obj.clone());
+        env.variable_pool.update_value(uuid, temp_obj.clone().to_variable());
         temp_obj
     }
     pub fn store(&mut self, id: String, env: &mut PyNamespace, namespace: Namespace) -> Uuid {
+        env.variable_pool.update_value(self.uuid, self.clone().to_variable());
         env.set_any_from_uuid(namespace.clone(), id, self.uuid);
         self.uuid
     }
@@ -250,31 +283,26 @@ impl PyObject {
     /// 从对象设置对象属性
     /// - id: 属性名称 [`String`]
     /// - valur: 对象结构体 [`PyObject`]
-    pub fn set_attr(
-        &mut self,
-        id: String,
-        value: PyObject,
-        env: &mut PyNamespace,
-        namespace: Namespace,
-    ) {
-        let uuid = env.set_any(namespace, id.clone(), value);
+    pub fn set_attr(&mut self, id: String, value: PyObject, env: &mut PyNamespace) {
+        let uuid = env.variable_pool.store_new_value(value.to_variable());
         self.attr.insert(id, PyObjAttr::Interpreter(uuid));
-        env.variable_pool.update_value(self.uuid, self.clone())
+        env.variable_pool.update_value(self.uuid, self.clone().to_variable())
     }
     /// 从DataType设置对象属性
     /// - id: 属性名称 [`String`]
     /// - valur: 数据枚举 [`DataType`]
     pub fn set_attr_data_type(&mut self, id: String, data_type: DataType, env: &mut PyNamespace) {
         self.attr.insert(id, PyObjAttr::Rust(data_type));
-        env.variable_pool.update_value(self.uuid, self.clone())
+        env.variable_pool.update_value(self.uuid, self.clone().to_variable())
     }
 
     /// 从函数设置对象属性
     /// - id: 属性名称 [`String`]
     /// - py_function: 函数结构体 [`PyFunction`]
     pub fn set_attr_func(&mut self, id: String, py_function: PyFunction, env: &mut PyNamespace) {
-        self.attr.insert(id, PyObjAttr::Function(py_function));
-        env.variable_pool.update_value(self.uuid, self.clone())
+        self.attr
+            .insert(id, PyObjAttr::Rust(DataType::Function(py_function)));
+        env.variable_pool.update_value(self.uuid, self.clone().to_variable())
     }
 
     /// 获取属性（仅限于对象）
@@ -282,7 +310,7 @@ impl PyObject {
     /// - env: 作用域结构体，使用可变引用 [`PyNamespace`]
     /// 返回：
     /// Result<[`PyObject`],[`ErrorType`]>
-    pub fn get_attr(&mut self, id: String, env: &mut PyNamespace) -> Result<PyObject, ErrorType> {
+    pub fn get_attr(&mut self, id: String, env: &mut PyNamespace) -> Result<PyVariable, ErrorType> {
         match self.attr.get(&id) {
             None => Err(ErrorType::ObjBasicError(
                 ObjBasicError::default().identity(self.identity.clone()),
@@ -291,15 +319,17 @@ impl PyObject {
                 PyObjAttr::Interpreter(x) => {
                     return Ok(env.variable_pool.get_value(x.clone()).unwrap())
                 }
-                PyObjAttr::Rust(_) => {
-                    return Err(ErrorType::ObjDatatypeNotAttr(ObjDataTypeNotAttr::default()))
+                PyObjAttr::Rust(x) => {
+                    return match x.clone() {
+                        DataType::Function(_) => {
+                            Err(ErrorType::ObjMethodNotAttr(ObjMethodNotAttr::default()))
+                        }
+                        _ => Err(ErrorType::ObjDatatypeNotAttr(ObjDataTypeNotAttr::default())),
+                    }
                 }
                 PyObjAttr::None => Err(ErrorType::ObjBasicError(
                     ObjBasicError::default().identity(self.identity.clone()),
                 )),
-                PyObjAttr::Function(_) => {
-                    return Err(ErrorType::ObjMethodNotAttr(ObjMethodNotAttr::default()))
-                }
             },
         }
     }
@@ -312,7 +342,10 @@ impl PyObject {
         match self.attr.get(&id) {
             None => None,
             Some(x) => match x {
-                PyObjAttr::Function(x) => Some(x.clone()),
+                PyObjAttr::Rust(x) => match x.clone() {
+                    DataType::Function(x) => Some(x),
+                    _ => None,
+                },
                 _ => None,
             },
         }
@@ -332,7 +365,12 @@ impl PyObject {
     }
 }
 impl PyObject {
-    pub fn inherit(&mut self) {}
+    pub fn inherit(&mut self,cls:Vec<PyVariable>, env: &mut PyNamespace) {
+        let cls = cls.clone().push(env.get_builtin("object".to_string()).unwrap());
+        for i in cls{
+            let _ = i.into_iter().map(|(k, v)| self.attr.insert(k, v));
+        }
+    }
 
     pub fn call(
         &mut self,
@@ -389,7 +427,6 @@ fn test_object() {
             "attr".to_string(),
             PyObject::new(PyObject::default(), builtin_function_args.env),
             builtin_function_args.env,
-            builtin_function_args.get_namespace(),
         );
         match builtin_function_args.get_namespace() {
             Namespace::Enclosing(_) => {
@@ -417,8 +454,8 @@ fn test_object() {
             .arg(vec!["self".to_string(), "p0".to_string()]),
         &mut env,
     ); // 设置该对象的__call__方法
-    env.set_any(namespace.clone(), "test".to_string(), test_obj.clone());
-    test_obj.py_call(
+    env.set_any(namespace.clone(), "test".to_string(), test_obj.clone().to_variable());
+    let re = test_obj.py_call(
         vec![PyObjAttr::Interpreter(uuid)],
         &mut BuiltinFunctionArgs {
             env: &mut env,
@@ -427,4 +464,5 @@ fn test_object() {
             data_type: vec![],
         },
     ); // 调用该对象的方法
+    println!("{:?}", re);
 }

@@ -1,8 +1,11 @@
+use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
 use std::hash::{Hash, Hasher};
+use typed_builder::TypedBuilder;
 
 use crate::ast::ast_struct::FuncArgs::ARGS;
-use crate::object::object::PyObject;
+use crate::object::namespace::PyVariable;
+use crate::object::object::{PyFunction, PyObjAttr, PyObject};
 
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
@@ -93,11 +96,19 @@ pub enum DataType {
     Float(f64),
     Bool(bool),
     Str(String),
-    List(Box<Vec<PyObject>>),
+    List(Box<Vec<PyObjAttr>>),
+    Function(PyFunction),
+    Dictionary(Box<HashMap<PyObjAttr, PyObjAttr>>),
+    Set(Box<HashSet<PyObjAttr>>),
     None,
 }
-impl Eq for DataType{}
-impl Hash for DataType{
+impl DataType {
+    pub fn to_variable(&self) -> PyVariable{
+        PyVariable::DaraType(self.clone())
+    }
+}
+impl Eq for DataType {}
+impl Hash for DataType {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.str().hash(state)
     }
@@ -171,8 +182,9 @@ pub struct BoolOp {
     pub values: Box<Vec<Type>>,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, TypedBuilder)]
 pub struct Print {
+    #[builder(default=Box::new(Type::None))]
     pub(crate) arg: Box<Type>,
 }
 

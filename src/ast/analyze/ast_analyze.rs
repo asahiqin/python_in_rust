@@ -2,9 +2,11 @@ use crate::ast::ast_struct::{Assign, If, Name, Print, PyCtx, PyRootNode, Type, W
 use crate::ast::scanner::TokenType::{
     LineBreak, COLON, ELIF, ELSE, EOF, EQUAL, IDENTIFIER, IF, PRINT, SPACE, TAB, WHILE,
 };
-use crate::ast::scanner::{Literal, Scanner, Token, TokenType};
+use crate::ast::scanner::{build_scanner, Literal, Scanner, Token, TokenType};
 use crate::error::parser_error::ParserError;
 use crate::error::{BasicError, ErrorType};
+use crate::{define_rules, define_stmt};
+use colored::Colorize;
 
 #[derive(Debug, Clone)]
 pub struct TokenIter {
@@ -253,6 +255,7 @@ impl Parser {
     }
     fn statement(&mut self) -> Result<Type, ErrorType> {
         if self.token_iter.catch([PRINT]) {
+            self.token_iter.back(1).unwrap();
             return self.print_statement();
         }
         if self.token_iter.catch([IF]) {
@@ -275,14 +278,6 @@ impl Parser {
         } else {
             panic!("error")
         }
-    }
-    fn print_statement(&mut self) -> Result<Type, ErrorType> {
-        let expr = self.statement().unwrap();
-        self.token_iter
-            .consume(TokenType::LineBreak, "".to_string())?;
-        Ok(Type::Print(Box::from(Print {
-            arg: Box::new(expr),
-        })))
     }
     pub(crate) fn assign_statement(&mut self) -> Result<Type, ErrorType> {
         let expr = self.identifier_statement(PyCtx::Load);
@@ -415,4 +410,24 @@ impl Parser {
         }
         false
     }
+}
+
+define_stmt!(
+    stmt_id:print_statement;
+    ast:Print;
+    {
+        <token:(PRINT)>;<expr:(arg)>;
+        <end_line>
+    };
+    with_box
+);
+
+#[test]
+fn test_parser() {
+    println!("{}", "[INFO] Test parser".yellow());
+    let source = String::from("a=1\nprint a\nb=2\nprint b");
+    let mut scanner = build_scanner(source);
+    scanner.scan();
+    let mut parser = build_parser(scanner);
+    println!("{:#?}", parser.create_vec());
 }
