@@ -1,12 +1,12 @@
 use std::collections::HashMap;
 use std::hash::Hash;
 
+use crate::ast::ast_struct::DataType;
 use bimap::BiHashMap;
 use uuid::Uuid;
-use crate::ast::ast_struct::DataType;
 
-use crate::error::{BasicError, ErrorType};
 use crate::error::environment::{GetVariableError, NamespaceNotFound, SetVariableError};
+use crate::error::{BasicError, ErrorType};
 use crate::object::object::PyObject;
 
 type PyEnvId = HashMap<String, Uuid>;
@@ -14,6 +14,37 @@ type PyEnvId = HashMap<String, Uuid>;
 pub enum PyVariable {
     Object(PyObject),
     DaraType(DataType),
+}
+impl Default for PyVariable {
+    fn default() -> Self {
+        PyVariable::Object(PyObject::default())
+    }
+}
+impl From<PyObject> for PyVariable {
+    fn from(x: PyObject) -> Self {
+        PyVariable::Object(x)
+    }
+}
+impl From<DataType> for PyVariable {
+    fn from(x: DataType) -> Self {
+        PyVariable::DaraType(x)
+    }
+}
+impl From<PyVariable> for PyObject {
+    fn from(x: PyVariable) -> Self {
+        match x {
+            PyVariable::Object(x) => x,
+            PyVariable::DaraType(_) => panic!("Error to convert PyVariable to PyObject"),
+        }
+    }
+}
+impl From<PyVariable> for DataType {
+    fn from(value: PyVariable) -> Self {
+        match value {
+            PyVariable::DaraType(x) => x,
+            PyVariable::Object(_) => panic!("Error to convert PyVariable to DataType"),
+        }
+    }
 }
 #[derive(Debug)]
 /// struct VariablePool
@@ -361,14 +392,14 @@ impl PyNamespace {
                 ))
             }
             Some(x) => {
-                match Self::deref_local_namespace(x, local_id, 0) {
+                return match Self::deref_local_namespace(x, local_id, 0) {
                     Ok(x) => {
                         let inter = x;
                         let uuid = self.variable_pool.store_new_value(value);
                         inter.namespace.insert(id, uuid);
-                        return Ok(uuid);
+                        Ok(uuid)
                     }
-                    Err(x) => return Err(x),
+                    Err(x) => Err(x),
                 };
             }
         }

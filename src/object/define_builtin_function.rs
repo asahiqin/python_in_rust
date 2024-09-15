@@ -5,7 +5,7 @@ use uuid::Uuid;
 
 use crate::ast::ast_struct::DataType;
 use crate::error::ErrorType;
-use crate::object::namespace::{Namespace, PyNamespace};
+use crate::object::namespace::{Namespace, PyNamespace, PyVariable};
 use crate::object::object::{PyObject, PyResult};
 
 /// 内置函数的可执行类型<br>
@@ -106,7 +106,7 @@ impl BuiltinFunctionArgs<'_> {
     }
     /// 获取指定变量
     /// - id: 标识符
-    pub fn get_variable(&self, id: String) -> Result<PyObject, ErrorType> {
+    pub fn get_variable(&self, id: String) -> Result<PyVariable, ErrorType> {
         self.env.get_any(self.namespace.clone(), id)
     }
     /// 获取指定变量的Uuid
@@ -117,7 +117,7 @@ impl BuiltinFunctionArgs<'_> {
     /// 设置一个变量
     /// - id: 标识符
     /// - obj： 对象 [`PyObject`]
-    pub fn set_variable(&mut self, id: String, obj: PyObject) -> Uuid {
+    pub fn set_variable(&mut self, id: String, obj: PyVariable) -> Uuid {
         self.env.set_any(self.namespace.clone(), id, obj)
     }
     /// 直接用Uuid设置一个变量

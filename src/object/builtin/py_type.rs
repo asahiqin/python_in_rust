@@ -20,15 +20,12 @@ pub fn builtin_method_or_function(py_function: PyFunction, env: &mut PyNamespace
     PyObject::new(obj, env)
 }
 
-
 pub fn type_call(builtin_function_args: &mut BuiltinFunctionArgs) -> PyResult {
     match builtin_function_args.get_variable(String::from("cls")) {
         Ok(x) => {
             todo!()
         }
-        Err(x) => {
-            PyResult::Err(x)
-        }
+        Err(x) => PyResult::Err(x),
     }
 }
 
@@ -37,10 +34,10 @@ pub fn py_type(env: &mut PyNamespace, builtin: &mut ObjBuiltInFunction) -> PyObj
     obj.set_attr(
         "__init__".to_string(),
         builtin_method_or_function(
-            PyFunction::default()
-                .run_default("__init__".to_string()),
+            PyFunction::default().run_default("__init__".to_string()),
             env,
-        ),
+        )
+        .into(),
         env,
     );
     obj.set_attr(
@@ -50,7 +47,8 @@ pub fn py_type(env: &mut PyNamespace, builtin: &mut ObjBuiltInFunction) -> PyObj
                 .run_default("__call__".to_string())
                 .arg(vec!["self".to_string(), "cls".to_string()]),
             env,
-        ),
+        )
+        .into(),
         env,
     );
     builtin.define_obj(

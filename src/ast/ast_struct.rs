@@ -2,10 +2,11 @@ use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
 use std::hash::{Hash, Hasher};
 use typed_builder::TypedBuilder;
+use uuid::Uuid;
 
 use crate::ast::ast_struct::FuncArgs::ARGS;
 use crate::object::namespace::PyVariable;
-use crate::object::object::{PyFunction, PyObjAttr, PyObject};
+use crate::object::object::{PyFunction, PyObject};
 
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
@@ -96,14 +97,14 @@ pub enum DataType {
     Float(f64),
     Bool(bool),
     Str(String),
-    List(Box<Vec<PyObjAttr>>),
+    List(Vec<Uuid>),
     Function(PyFunction),
-    Dictionary(Box<HashMap<PyObjAttr, PyObjAttr>>),
-    Set(Box<HashSet<PyObjAttr>>),
+    Dictionary(HashMap<Uuid, Uuid>),
+    Set(HashSet<Uuid>),
     None,
 }
 impl DataType {
-    pub fn to_variable(&self) -> PyVariable{
+    pub fn to_variable(&self) -> PyVariable {
         PyVariable::DaraType(self.clone())
     }
 }

@@ -7,7 +7,7 @@ use crate::ast::scanner::TokenType::{
 };
 use crate::ast::scanner::{Literal, TokenType};
 use crate::error::ErrorType;
-use crate::object::builtin::::{obj_bool, obj_float, obj_int, obj_str};
+use crate::object::builtin::r#type::{obj_bool, obj_float, obj_int, obj_str};
 
 impl Parser {
     fn primary(&mut self) -> Result<Type, ErrorType> {

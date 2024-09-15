@@ -5,7 +5,7 @@ macro_rules! def {
     (def $ident:ident with $name:expr;$($tail:tt)*)=>{
         pub fn $ident(
             &mut self,
-            args: Vec<PyObjAttr>,
+            args: Vec<Uuid>,
             builtin_function_args: &mut BuiltinFunctionArgs
         ) -> PyResult {
             self.call($name.to_string(), args, builtin_function_args)
