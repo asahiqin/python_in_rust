@@ -1,12 +1,12 @@
 use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
 use std::hash::{Hash, Hasher};
+
 use typed_builder::TypedBuilder;
 use uuid::Uuid;
 
-use crate::ast::ast_struct::FuncArgs::ARGS;
 use crate::object::namespace::PyVariable;
-use crate::object::object::{PyFunction, PyObject};
+use crate::object::object::PyFunction;
 
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
@@ -117,12 +117,12 @@ impl Hash for DataType {
 #[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq)]
 pub struct Constant {
-    pub(crate) value: PyObject,
+    pub(crate) value: PyVariable,
     pub(crate) type_comment: String,
 }
 
 impl Constant {
-    pub(crate) fn new(value: PyObject) -> Constant {
+    pub(crate) fn new(value: PyVariable) -> Constant {
         return Constant {
             value,
             type_comment: "".to_string(),

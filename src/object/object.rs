@@ -1,4 +1,3 @@
-use std::cell::RefCell;
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 
@@ -6,10 +5,10 @@ use uuid::Uuid;
 
 use crate::ast::ast_struct::{DataType, Type};
 use crate::def;
-use crate::error::object_error::{
-    ObjBasicError, ObjDataTypeNotAttr, ObjMethodCallError, ObjMethodNotAttr,
-};
 use crate::error::ErrorType;
+use crate::error::object_error::{
+    ObjBasicError, ObjMethodCallError,
+};
 use crate::object::define_builtin_function::{
     BuiltinFunctionArgs, ExecFunction, ObjBuiltInFunction,
 };
@@ -114,7 +113,6 @@ impl PyFunction {
             builtin: builtin_function_args.builtin,
             data_type: builtin_function_args.data_type.clone(),
         };
-        let mut data_type_vec: Vec<DataType> = vec![];
         let mut len = 0;
         // 将函数的参数写入作用域
         for (index, item) in self.arg.iter().enumerate() {
@@ -162,7 +160,7 @@ fn exec_commands(_p0: Vec<Box<Type>>, _p1: &mut PyNamespace, _p2: Namespace) -> 
 #[derive(Clone, Debug)]
 pub enum PyResult {
     None,
-    Some(PyObject),
+    Some(PyVariable),
     Err(ErrorType),
 }
 
@@ -346,7 +344,7 @@ impl PyObject {
         self_args.append(&mut args.clone());
         match self.get_attr(method.clone(), builtin_function_args.env) {
             Ok(mut x) => match x {
-                PyVariable::Object(mut x) => x.py_call(self_args, builtin_function_args),
+                PyVariable::Object(x) => x.clone().py_call(self_args, builtin_function_args),
                 PyVariable::DaraType(x) => match x {
                     DataType::Function(x) => {
                         x.clone().run(method, self_args, builtin_function_args)

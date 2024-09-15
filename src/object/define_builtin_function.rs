@@ -6,7 +6,7 @@ use uuid::Uuid;
 use crate::ast::ast_struct::DataType;
 use crate::error::ErrorType;
 use crate::object::namespace::{Namespace, PyNamespace, PyVariable};
-use crate::object::object::{PyObject, PyResult};
+use crate::object::object::{PyResult};
 
 /// 内置函数的可执行类型<br>
 /// 要求：

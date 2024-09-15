@@ -1,4 +1,3 @@
-use crate::error::ErrorType;
 use crate::object::define_builtin_function::{BuiltinFunctionArgs, ObjBuiltInFunction};
 use crate::object::namespace::{Namespace, PyNamespace};
 use crate::object::object::{PyFunction, PyObject, PyResult};
@@ -22,7 +21,7 @@ pub fn builtin_method_or_function(py_function: PyFunction, env: &mut PyNamespace
 
 pub fn type_call(builtin_function_args: &mut BuiltinFunctionArgs) -> PyResult {
     match builtin_function_args.get_variable(String::from("cls")) {
-        Ok(x) => {
+        Ok(_x) => {
             todo!()
         }
         Err(x) => PyResult::Err(x),

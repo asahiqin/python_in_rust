@@ -39,7 +39,7 @@ macro_rules! define_rules {
     (_p:$parser:expr;_a:$ast:expr;<expr:($args:ident)>;$($tt:tt)*) => {
         {
             let mut parser:&mut Parser=&mut $parser;
-            let mut ast=&mut $ast;
+            let ast=&mut $ast;
             ast.$args = Box::new(parser.expression()?);
             define_rules!(_p:parser;_a:ast;$($tt)*)
         }
