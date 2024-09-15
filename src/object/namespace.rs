@@ -13,7 +13,7 @@ type PyEnvId = HashMap<String, Uuid>;
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum PyVariable {
     Object(PyObject),
-    DaraType(DataType),
+    DataType(DataType),
 }
 impl Default for PyVariable {
     fn default() -> Self {
@@ -27,21 +27,21 @@ impl From<PyObject> for PyVariable {
 }
 impl From<DataType> for PyVariable {
     fn from(x: DataType) -> Self {
-        PyVariable::DaraType(x)
+        PyVariable::DataType(x)
     }
 }
 impl From<PyVariable> for PyObject {
     fn from(x: PyVariable) -> Self {
         match x {
             PyVariable::Object(x) => x,
-            PyVariable::DaraType(_) => panic!("Error to convert PyVariable to PyObject"),
+            PyVariable::DataType(_) => panic!("Error to convert PyVariable to PyObject"),
         }
     }
 }
 impl From<PyVariable> for DataType {
     fn from(value: PyVariable) -> Self {
         match value {
-            PyVariable::DaraType(x) => x,
+            PyVariable::DataType(x) => x,
             PyVariable::Object(_) => panic!("Error to convert PyVariable to DataType"),
         }
     }

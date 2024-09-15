@@ -105,7 +105,7 @@ pub enum DataType {
 }
 impl DataType {
     pub fn to_variable(&self) -> PyVariable {
-        PyVariable::DaraType(self.clone())
+        PyVariable::DataType(self.clone())
     }
 }
 impl Eq for DataType {}

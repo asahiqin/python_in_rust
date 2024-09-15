@@ -1,5 +1,3 @@
-use crate::object::builtin::py_type::builtin_method_or_function;
-use crate::object::object::PyFunction;
 /// 定义对象的函数调用的宏
 #[macro_export]
 macro_rules! def {

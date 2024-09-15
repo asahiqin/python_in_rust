@@ -30,19 +30,19 @@ pub fn str_class(env: &mut PyNamespace, obj_built_in_function: &mut ObjBuiltInFu
 }
 
 pub fn obj_str(x: String) -> PyVariable {
-    PyVariable::DaraType(DataType::Str(x))
+    PyVariable::DataType(DataType::Str(x))
 }
 
 pub fn obj_bool(x: bool) -> PyVariable {
-    PyVariable::DaraType(DataType::Bool(x))
+    PyVariable::DataType(DataType::Bool(x))
 }
 
 pub fn obj_int(x: i64) -> PyVariable {
-    PyVariable::DaraType(DataType::Int(x))
+    PyVariable::DataType(DataType::Int(x))
 }
 
 pub fn obj_float(x: f64) -> PyVariable {
-    PyVariable::DaraType(DataType::Float(x))
+    PyVariable::DataType(DataType::Float(x))
 }
 
 

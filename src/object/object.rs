@@ -285,7 +285,7 @@ impl PyObject {
     pub fn set_attr_func(&mut self, id: String, py_function: PyFunction, env: &mut PyNamespace) {
         let uuid = env
             .variable_pool
-            .store_new_value(PyVariable::DaraType(DataType::Function(py_function)));
+            .store_new_value(PyVariable::DataType(DataType::Function(py_function)));
         self.attr.insert(id, uuid);
         env.variable_pool
             .update_value(self.uuid, self.clone().to_variable())
@@ -315,7 +315,7 @@ impl PyObject {
             Some(x) => match env.variable_pool.get_value(x.clone()) {
                 None => None,
                 Some(x) => match x {
-                    PyVariable::DaraType(DataType::Function(x)) => Some(x.clone()),
+                    PyVariable::DataType(DataType::Function(x)) => Some(x.clone()),
                     _ => None,
                 },
             },
@@ -345,7 +345,7 @@ impl PyObject {
         match self.get_attr(method.clone(), builtin_function_args.env) {
             Ok(mut x) => match x {
                 PyVariable::Object(x) => x.clone().py_call(self_args, builtin_function_args),
-                PyVariable::DaraType(x) => match x {
+                PyVariable::DataType(x) => match x {
                     DataType::Function(x) => {
                         x.clone().run(method, self_args, builtin_function_args)
                     }
