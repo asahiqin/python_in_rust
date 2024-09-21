@@ -2,12 +2,11 @@ use std::collections::HashMap;
 use std::hash::Hash;
 
 use crate::ast::ast_struct::DataType;
-use bimap::BiHashMap;
-use uuid::Uuid;
-
 use crate::error::environment::{GetVariableError, NamespaceNotFound, SetVariableError};
 use crate::error::{BasicError, ErrorType};
 use crate::object::object::PyObject;
+use bimap::BiHashMap;
+use uuid::Uuid;
 
 type PyEnvId = HashMap<String, Uuid>;
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -99,7 +98,6 @@ impl VariablePool {
 /// builtin：内置
 /// global：全局
 /// enclosing：第一层函数
-/// local：第一层函数内的嵌套函数
 #[derive(Debug)]
 pub struct PyNamespace {
     pub variable_pool: VariablePool,
@@ -385,21 +383,21 @@ impl PyNamespace {
     ) -> Result<Uuid, ErrorType> {
         match self.enclosing_namespace.get_mut(&namespace_id) {
             None => {
-                return Err(GetVariableError::new(
-                    BasicError::default(),
-                    id,
-                    "".to_string(),
-                ))
+                self.create_enclosing_namespace(namespace_id.clone());
+                self.set_local(namespace_id, local_id, id, value)
             }
             Some(x) => {
-                return match Self::deref_local_namespace(x, local_id, 0) {
+                return match Self::deref_local_namespace(x, local_id.clone(), 0) {
                     Ok(x) => {
                         let inter = x;
                         let uuid = self.variable_pool.store_new_value(value);
                         inter.namespace.insert(id, uuid);
                         Ok(uuid)
                     }
-                    Err(x) => Err(x),
+                    Err(x) => {
+                        self.create_local_namespace(namespace_id.clone(), local_id.clone());
+                        self.set_local(namespace_id, local_id, id, value)
+                    }
                 };
             }
         }

@@ -5,10 +5,8 @@ use uuid::Uuid;
 
 use crate::ast::ast_struct::{DataType, Type};
 use crate::def;
+use crate::error::object_error::{ObjBasicError, ObjMethodCallError};
 use crate::error::ErrorType;
-use crate::error::object_error::{
-    ObjBasicError, ObjMethodCallError,
-};
 use crate::object::define_builtin_function::{
     BuiltinFunctionArgs, ExecFunction, ObjBuiltInFunction,
 };
@@ -21,9 +19,13 @@ pub struct PyFunction {
     kwargs: bool,
     args: bool,
     run_default: String,
-    default: HashMap<String, PyObject>,
+    default: HashMap<String, PyVariable>,
 }
-
+impl From<PyFunction> for PyVariable {
+    fn from(value: PyFunction) -> Self {
+        PyVariable::DataType(DataType::Function(value))
+    }
+}
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct HashPyFunction {
     codes: String,
@@ -78,8 +80,13 @@ impl PyFunction {
         return self.clone();
     }
 
-    pub fn default_args(&mut self, default: HashMap<String, PyObject>) -> Self {
+    pub fn default_args(&mut self, default: HashMap<String, PyVariable>) -> Self {
         self.default = default;
+        return self.clone();
+    }
+
+    pub fn enable_args(&mut self) -> Self {
+        self.args = true;
         return self.clone();
     }
 }
@@ -92,14 +99,19 @@ impl PyFunction {
     pub fn run(
         &mut self,
         id: String,
-        vec: Vec<Uuid>,
+        arg_vec: Vec<Uuid>,
         builtin_function_args: &mut BuiltinFunctionArgs,
     ) -> PyResult {
         let uuid = Uuid::new_v4().to_string();
         // 进入新的命名空间
         let namespace = match builtin_function_args.get_namespace() {
             Namespace::Global => Namespace::Enclosing(uuid),
-            Namespace::Enclosing(x) => Namespace::Local(x, vec![uuid]),
+            Namespace::Enclosing(x) => {
+                builtin_function_args
+                    .env
+                    .create_local_namespace(x.clone(), vec![uuid.clone()]);
+                Namespace::Local(x, vec![uuid])
+            }
             Namespace::Local(x, mut local) => {
                 local.push(uuid);
                 let local = local;
@@ -111,26 +123,31 @@ impl PyFunction {
             env: builtin_function_args.env,
             namespace: namespace.clone(),
             builtin: builtin_function_args.builtin,
-            data_type: builtin_function_args.data_type.clone(),
         };
         let mut len = 0;
         // 将函数的参数写入作用域
         for (index, item) in self.arg.iter().enumerate() {
-            match vec.get(index) {
+            match arg_vec.get(index) {
                 None => match self.default.get(item) {
                     None => {
                         panic!("Error to check arg")
                     }
                     Some(x) => {
-                        new_args.set_variable(item.clone(), PyVariable::Object(x.clone()));
+                        new_args.set_variable(item.clone(), x.clone());
                     }
                 },
-                Some(x) => new_args.set_uuid(item.clone(), *x),
+                Some(x) => {
+                    new_args.set_uuid(item.clone(), *x);
+                    len += 1
+                }
             };
         }
-        if len < vec.len() {
+        if len < arg_vec.len() {
             if self.args {
-                todo!()
+                new_args.set_variable(
+                    "args".to_string(),
+                    PyVariable::DataType(DataType::List(arg_vec[len..].to_owned())),
+                );
             }
         }
         // 调用内置函数，如果没有就跳过这一步
@@ -163,7 +180,21 @@ pub enum PyResult {
     Some(PyVariable),
     Err(ErrorType),
 }
-
+impl From<PyResult> for PyVariable{
+    fn from(value: PyResult) -> Self {
+        match value {
+            PyResult::None => {
+                PyVariable::DataType(DataType::None)
+            }
+            PyResult::Some(x) => {
+                x
+            }
+            PyResult::Err(_) => {
+                panic!("Error to convert PyResult to PyVariable")
+            }
+        }
+    }
+}
 /// 存储属性的kv
 pub type HashMapAttr = HashMap<String, Uuid>;
 /// 一个Python对象
@@ -175,8 +206,8 @@ pub type HashMapAttr = HashMap<String, Uuid>;
 pub struct PyObject {
     pub attr: HashMapAttr,
     pub identity: String,
-    pub meta_class: String,
-    pub inherit: String,
+    pub meta_class: Option<Box<PyVariable>>,
+    pub inherit: Box<Vec<PyVariable>>,
     pub uuid: Uuid,
 }
 
@@ -216,8 +247,8 @@ impl Default for PyObject {
         PyObject {
             attr: Default::default(),
             identity: "".to_string(),
-            meta_class: "".to_string(),
-            inherit: "".to_string(),
+            meta_class: None,
+            inherit: Box::new(vec![]),
             uuid: Uuid::new_v4(),
         }
     }
@@ -323,14 +354,20 @@ impl PyObject {
     }
 }
 impl PyObject {
-    pub fn inherit(&mut self, cls: Vec<PyVariable>, env: &mut PyNamespace) {
-        let mut cls: Vec<PyVariable> = cls.clone();
+    pub fn inherit(&mut self, env: &mut PyNamespace) {
+        let mut cls: Vec<PyVariable> = *self.inherit.clone();
         cls.push(env.get_builtin("object".to_string()).unwrap());
         for i in cls {
-            let _ = PyObject::from(i)
-                .attr
-                .into_iter()
-                .map(|(k, v)| self.attr.insert(k, v));
+            for (k, v) in PyObject::from(i.clone()).attr.into_iter() {
+                self.attr.insert(k, v);
+            }
+        }
+        env.variable_pool
+            .update_value(self.uuid, self.clone().to_variable());
+    }
+    pub fn meta_class(&mut self, env: &mut PyNamespace){
+        if let Some(x) = self.meta_class.clone(){
+
         }
     }
 
@@ -340,13 +377,13 @@ impl PyObject {
         args: Vec<Uuid>,
         builtin_function_args: &mut BuiltinFunctionArgs,
     ) -> PyResult {
-        let mut self_args = vec![self.uuid];
-        self_args.append(&mut args.clone());
+        let mut self_args = args.clone();
         match self.get_attr(method.clone(), builtin_function_args.env) {
             Ok(mut x) => match x {
-                PyVariable::Object(x) => x.clone().py_call(self_args, builtin_function_args),
                 PyVariable::DataType(x) => match x {
                     DataType::Function(x) => {
+                        self_args = vec![self.uuid];
+                        self_args.append(&mut args.clone());
                         x.clone().run(method, self_args, builtin_function_args)
                     }
                     _ => {
@@ -357,6 +394,7 @@ impl PyObject {
                         ))
                     }
                 },
+                PyVariable::Object(mut x) => x.py_call(self_args, builtin_function_args),
             },
             Err(e) => return PyResult::Err(e),
         }
@@ -436,7 +474,6 @@ fn test_object() {
             env: &mut env,
             namespace,
             builtin: &builtin,
-            data_type: vec![],
         },
     ); // 调用该对象的方法
     println!("{:?}", re);

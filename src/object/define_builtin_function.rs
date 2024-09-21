@@ -6,7 +6,7 @@ use uuid::Uuid;
 use crate::ast::ast_struct::DataType;
 use crate::error::ErrorType;
 use crate::object::namespace::{Namespace, PyNamespace, PyVariable};
-use crate::object::object::{PyResult};
+use crate::object::object::PyResult;
 
 /// 内置函数的可执行类型<br>
 /// 要求：
@@ -64,6 +64,23 @@ impl ObjBuiltInFunction {
             },
         }
     }
+    pub fn get_defined_fn(&self) -> HashMap<String, Vec<String>> {
+        let obj_name: Vec<String> = self
+            .call
+            .keys()
+            .clone()
+            .into_iter()
+            .map(|x| x.clone())
+            .collect();
+        let mut defined_fn: HashMap<String, Vec<String>> = HashMap::new();
+        for name in obj_name {
+            defined_fn.insert(
+                name.clone(),
+                self.call[&name].keys().clone().map(|x| x.clone()).collect(),
+            );
+        }
+        defined_fn
+    }
 }
 /// 执行内置函数的结构体
 /// - obj: 对象标识符
@@ -92,7 +109,6 @@ pub struct BuiltinFunctionArgs<'a> {
     pub env: &'a mut PyNamespace,
     pub namespace: Namespace,
     pub builtin: &'a ObjBuiltInFunction,
-    pub data_type: Vec<DataType>,
 }
 
 impl BuiltinFunctionArgs<'_> {
@@ -100,10 +116,7 @@ impl BuiltinFunctionArgs<'_> {
     pub fn get_namespace(&self) -> Namespace {
         self.namespace.clone()
     }
-    /// 获取参数的DataType矢量数组
-    pub fn get_data_type(&self) -> Vec<DataType> {
-        return self.data_type.clone();
-    }
+
     /// 获取指定变量
     /// - id: 标识符
     pub fn get_variable(&self, id: String) -> Result<PyVariable, ErrorType> {
@@ -139,7 +152,6 @@ fn test_define_fn() {
             env: &mut env,
             namespace,
             builtin: &Default::default(),
-            data_type: vec![],
         },
     );
 }

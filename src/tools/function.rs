@@ -31,17 +31,13 @@ macro_rules! def_class {
         $obj.set_attr(
             $method,
             builtin_method_or_function(
-                PyFunction::default()
-                .run_default($method)
-                .arg($args),
-                $env
-            ).into(),
-            $env
+                PyFunction::default().run_default($method).arg($args),
+                $env,
+                $builtin,
+            )
+            .into(),
+            $env,
         );
-        $builtin.define_obj(
-            $name,
-            $method,
-            Box::new($func),
-        )
+        $builtin.define_obj($name, $method, Box::new($func))
     };
 }
